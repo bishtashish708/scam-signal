@@ -50,5 +50,5 @@ A 'verify your account / unusual sign-in / mailbox full / shared document' messa
 - FBI IC3 (internet, crypto, investment, extortion, large losses): https://www.ic3.gov
 
 ---
-*scam-signal v0.1.0: local rule-based signals (score 23). This is guidance, not a guarantee and not legal advice. When in doubt, contact the organization through a channel you look up yourself.*
+*scam-signal v0.2.0: local rule-based signals (score 23). This is guidance, not a guarantee and not legal advice. When in doubt, contact the organization through a channel you look up yourself.*
 

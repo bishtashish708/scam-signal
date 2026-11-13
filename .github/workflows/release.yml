@@ -1,0 +1,35 @@
+name: release
+# Push a tag like v0.2.0 -> run tests -> build the Claude.ai skill zip -> attach it to a GitHub Release.
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests + eval gate
+        run: python -m unittest discover -s tests -v
+      - name: Check tag matches plugin version
+        run: |
+          v=$(python -c "import json;print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != plugin.json v$v"; exit 1; }
+      - name: Build skill zip
+        run: python scripts/build_skill_zip.py
+      - name: Release notes from CHANGELOG
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '$0 ~ "^## \\[?"v"\\]?" {f=1; next} /^## / && f {exit} f' CHANGELOG.md > notes.md
+          printf '\n---\n**Install on Claude.ai / the Claude app:** download `scam-signal.zip` below, then follow [Getting started](https://github.com/%s/blob/%s/docs/getting-started.md).\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" >> notes.md
+          cat notes.md
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/scam-signal.zip \
+            --title "scam-signal $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

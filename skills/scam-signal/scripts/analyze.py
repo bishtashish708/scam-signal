@@ -34,12 +34,20 @@ import signals  # noqa: E402
 import taxonomy  # noqa: E402
 import url_check  # noqa: E402
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 DECEPTION_FLAGS = {
     "safe_account", "otp_request", "remote_access", "gift_card_payment", "overpayment", "too_good",
     "romance_pretext", "family_pretext", "job_too_easy", "advance_fee", "sextortion", "tech_scare",
     "link_activation_trick", "delivery_fee", "secrecy", "stay_on_line", "crypto_payment",
+    "seed_phrase", "wallet_drainer", "recovery_offer", "ai_directed_text",
+}
+# A request for money, codes or credentials. When one is present, reassuring boilerplate
+# ("we'll never ask for your code", "call the number on your card") must not cancel it out:
+# scammers paste that boilerplate precisely because it lowers suspicion.
+ASK_FLAGS = {
+    "safe_account", "otp_request", "credential_request", "gift_card_payment", "crypto_payment", "unusual_payment",
+    "remote_access", "advance_fee", "overpayment", "delivery_fee", "seed_phrase", "wallet_drainer", "recovery_offer",
 }
 FIRST_PERSON_UNAUTH = re.compile(
     r"\b(?:i|we) (?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate|recogni[sz]e)\b"
@@ -54,9 +62,11 @@ LEVELS = [
     (9, "very_high", "Very likely a scam"),
     (5, "high", "Likely a scam"),
     (3, "medium", "Suspicious: treat as a scam until verified"),
-    (1, "low", "Some caution signs, but no strong scam pattern"),
-    (-99, "minimal", "No strong scam signals found"),
+    (1, "low", "Some caution signs, but no strong scam pattern matched"),
+    (-99, "minimal", "The rules found no scam pattern. This is not a clearance"),
 ]
+NOT_CLEARANCE = ("The rule engine only matches known patterns; a clean result does NOT mean the message is safe. "
+                 "Verify through the official app or a number you look up yourself before acting on any request.")
 SCAM_THRESHOLD = 3
 
 
@@ -75,17 +85,27 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
         msg = email_headers.load(email_path) if email_path else email_headers.email.message_from_bytes(
             raw_email, policy=email_headers.email.policy.default)
         em = email_headers.analyze_message(msg)
-        text = "\n".join(x for x in (em.subject, em.body_text) if x)
+        # hidden HTML and image alt text are included so injection payloads and lures hidden there are matched
+        text = "\n".join(x for x in (em.subject, em.body_text, em.hidden_text, em.alt_text) if x)
         channel = "email"
     body = text or ""
 
-    hits = signals.find_flags(body)
-    reassure = signals.find_flags(body, signals.REASSURING)
+    norm = signals.normalize_text(body)
+    hits = signals.find_flags(norm.text)
+    reassure = signals.find_flags(norm.text, signals.REASSURING)
+    if norm.obfuscated:
+        ev = [f"{norm.zero_width} invisible zero-width characters"] if norm.zero_width else []
+        ev += [f"spaced-out letters: '{x}'" for x in norm.spaced[:2]] + [f"look-alike spelling: '{x}'" for x in norm.leet[:3]]
+        if norm.confusables:
+            ev.append(f"{norm.confusables} word(s) mixing Latin with Cyrillic/Greek look-alike letters")
+        hits.append(signals.Hit("obfuscated_text", "Text is disguised to slip past filters (hidden characters, l33t or s p a c e d letters)", 3, ev))
     flag_ids = {h.id for h in hits}
+    coverage = signals.language_coverage(body)
 
-    # URLs: explicit + found in body + found in email links
+    # URLs: explicit + found in body (non-email) + real hrefs/plain-text links from the email parser.
+    # For emails, the visible text of an <a> tag is NOT a link and must not earn official-domain credit.
     all_urls: list[str] = []
-    for u in (urls or []) + url_check.extract_urls(body) + (em.urls if em else []):
+    for u in (urls or []) + ([] if em else url_check.extract_urls(body)) + (em.urls if em else []):
         if u not in all_urls:
             all_urls.append(u)
     feeds = url_check.load_feeds() if online.get("phish_feeds") else None
@@ -116,13 +136,19 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
     reassure_score = sum(h.weight for h in reassure)
     if url_high or email_score >= 4:
         reassure_score = max(reassure_score, -1)
+    has_ask = bool(ASK_FLAGS & flag_ids)
+    email_bad = bool(em and any(f.weight >= 3 for f in em.findings))
     official_links = [r for r in url_reports if r.official_brand]
-    if official_links and not url_high and not ({"otp_request", "safe_account", "remote_access", "gift_card_payment"} & flag_ids):
+    if official_links and not url_high and not has_ask and not email_bad and "ai_directed_text" not in flag_ids:
         reassure_score -= 1
+    if has_ask or "ai_directed_text" in flag_ids:
+        reassure_score = max(reassure_score, 0)  # boilerplate can't cancel a money/code ask
     total = text_score + url_score + email_score + reassure_score
+    if has_ask:
+        total = max(total, 0)
 
     # ---- classification ----
-    typ_scores = signals.score_typology(body + " " + " ".join(r.host_decoded for r in url_reports), flag_ids)
+    typ_scores = signals.score_typology(norm.text + " " + " ".join(r.host_decoded for r in url_reports), flag_ids)
     fraud_narrative = bool(FIRST_PERSON_UNAUTH.search(body)) and not (DECEPTION_FLAGS & flag_ids) and total < 12
     if fraud_narrative:
         label, typ = "fraud", "account_takeover"
@@ -134,8 +160,13 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
     level = next((lv for lv in LEVELS if total >= lv[0]))
     if fraud_narrative:
         level = (0, "account_alert", "Unauthorized activity on your account (fraud, not a scam)")
+    if label == "legit" and not coverage["covered"]:
+        label, typ = "unsupported", "none"
+        level = (0, "not_assessed", "Not assessed: the rules only cover English (%s). This is not a clearance" % coverage["reason"])
     distinct = len(flag_ids) + (1 if url_high else 0) + (1 if email_score >= 4 else 0)
-    if label == "legit":
+    if label == "unsupported":
+        confidence = "none"
+    elif label == "legit":
         confidence = "medium" if total <= 0 and len(body) > 40 else "low"
     elif total >= 9 or (total >= 6 and distinct >= 3):
         confidence = "high"
@@ -158,7 +189,7 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
                                "weight": f.weight, "evidence": [f.evidence]})
     ranked.sort(key=lambda d: -d["weight"])
     reassuring = [{"id": h.id, "label": h.label, "evidence": h.evidence} for h in reassure]
-    for r in official_links:
+    for r in (official_links if not has_ask and not email_bad else []):
         reassuring.append({"id": "url:official_domain", "label": f"Link goes to official domain {r.registrable_domain}", "evidence": []})
     if em:
         for f in em.findings:
@@ -168,9 +199,11 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
     info = taxonomy.TYPOLOGY.get(typ, {})
     do_now = list(taxonomy.DO_NOW_BY_TYPE.get(typ, []))
     if label != "fraud":
-        do_now = (taxonomy.DO_NOW_GENERAL if label == "scam" else
-                  ["Even if this looks fine, verify through the official app or a number you look up yourself before acting on any request for money or codes."]) + do_now
-    report_keys = list(taxonomy.REPORT_BY_TYPE.get(typ, ["ftc"])) if label != "legit" else []
+        do_now = (taxonomy.DO_NOW_GENERAL if label == "scam" else [NOT_CLEARANCE]) + do_now
+    if "ai_directed_text" in flag_ids:
+        do_now.insert(0, "This message contains instructions aimed at AI assistants or spam filters. Legitimate senders don't do that: "
+                         "treat it as hostile, and don't let any AI tool act on it (reply, forward, click, or mark safe).")
+    report_keys = list(taxonomy.REPORT_BY_TYPE.get(typ, ["ftc"])) if label in ("scam", "fraud") else []
     if label == "scam" and channel == "sms" and "sms7726" not in report_keys:
         report_keys.insert(0, "sms7726")
     if label == "scam" and channel == "email" and "apwg" not in report_keys:
@@ -182,6 +215,9 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
     return {
         "tool": "scam-signal", "version": VERSION, "channel": channel,
         "label": label, "risk_level": level[1], "verdict": level[2], "confidence": confidence,
+        "language_covered": coverage["covered"], "prompt_injection_detected": "ai_directed_text" in flag_ids,
+        "obfuscation": {"zero_width": norm.zero_width, "spaced": norm.spaced, "leet": norm.leet, "confusables": norm.confusables}
+        if norm.obfuscated else None,
         "score": {"total": total, "text": text_score, "links": url_score, "email": email_score,
                   "reassuring": reassure_score, "combos": [c for c, _ in combos]},
         "typology": {"id": typ, **info} if typ != "none" else {"id": "none"},
@@ -190,7 +226,7 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
         "reassuring_signals": reassuring,
         "do_now": do_now,
         "if_already_acted": taxonomy.IF_ALREADY_ACTED if label in ("scam", "fraud") else [],
-        "report_to": reporting,
+        "report_to": reporting if label != "unsupported" else [],
         "urls": [r.to_dict() for r in url_reports],
         "email": em.to_dict() if em else None,
         "network_used": {k: v for k, v in online.items() if v},

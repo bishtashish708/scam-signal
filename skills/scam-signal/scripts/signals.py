@@ -7,6 +7,7 @@ deliberately explainable: every flag carries the sentence that triggered it.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 # --------------------------------------------------------------------------
@@ -28,6 +29,8 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
         r"\b(?:read|give|tell|provide|send|share|confirm|repeat|forward)\b(?: \w+){0,3} (?:the |that |your |this )?(?:\d[- ]?digit )?(?:verification |security |confirmation |one[- ]time |authentication |google voice )?(?:code|passcode|otp|pin)\b",
         r"\b(?:code|passcode) (?:we|that) (?:just )?(?:sent|texted)\b.{0,40}\b(?:read|tell|give|provide|confirm)",
         r"\bverify (?:that )?you(?:'re| are) (?:real|a real person|not a (?:bot|scammer))\b",
+        r"\bhave (?:your |the )?(?:card and (?:the )?)?(?:verification |security |one[- ]time )?(?:code|passcode|otp)s? (?:we send |we text |that we send )?(?:ready|handy|available)\b",
+        r"\b(?:agent|specialist|representative|officer|technician|our team)\b.{0,60}\b(?:will )?(?:ask|need)s? (?:you )?(?:for )?(?:the |your )?(?:code|passcode|otp)\b",
     ]),
     ("credential_request", "Asks for passwords, PINs, SSN, card or account details", 4, [
         r"\b(?:confirm|verify|update|provide|enter|send|validate|re-?enter)\b(?: \w+){0,3} (?:your )?(?:password|pin|ssn|social security(?: number)?|account (?:number|details|information|info)|login (?:details|credentials)|card (?:number|details|information)|banking (?:details|information)|date of birth|online banking)",
@@ -169,6 +172,36 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
         r"\b(?:subscription|membership|plan|antivirus|protection)\b.{0,40}\b(?:renewed|auto-?renew\w*|will be charged|has been charged)\b.{0,60}\$\s?\d{2,}",
         r"\b(?:to cancel|for a refund|if you did not (?:authorize|make|request)).{0,40}\bcall\b",
     ]),
+    ("ai_directed_text", "Contains text aimed at an AI assistant or filter (prompt injection)", 5, [
+        r"\b(?:ignore|disregard|forget|override)\b(?: \w+){0,3} (?:previous|prior|above|earlier|all|your|system|safety) (?:instructions?|prompts?|rules?|guidelines?)\b",
+        r"\b(?:ai|a\.i\.|assistant|chatbot|llm|language model|claude|chatgpt|gpt|copilot|gemini|spam filter|scanner|classifier)\b.{0,80}\b(?:mark|classify|label|report|treat|consider|rate|flag)\b(?: \w+){0,4} (?:as )?(?:safe|legitimate|legit|trusted|verified|not (?:a )?(?:scam|spam|phishing)|harmless|clean)\b",
+        r"\b(?:note|message|instructions?) (?:to|for) (?:the )?(?:ai|assistant|model|llm|bot|claude|chatgpt|reviewer bot)\b",
+        r"\b(?:you are|act as|you'?re) (?:now )?(?:an? )?(?:ai|assistant|helpful assistant|llm|email assistant)\b.{0,80}\b(?:must|should|will|need to)\b",
+        r"\b(?:system prompt|developer mode|jailbreak)\b|<\|?(?:im_start|system|endoftext)\|?>|\[/?inst\]",
+        r"\b(?:do not|don'?t|never) (?:flag|warn|alert|mention|report)\b.{0,40}\b(?:this (?:email|message)|the user|scam|phishing)\b",
+        r"\b(?:forward|send|reply|delete|archive|move|label|export)\b(?: [\w']+){0,5} (?:emails?|messages?|inbox|contacts?|passwords?|files?|attachments?|conversations?)\b.{0,60}\b(?:to|into) (?:[\w.+-]+@[\w-]+\.[\w.]+|this address|the following address)",
+        r"\bif you(?:'re| are) an? (?:ai|a\.i\.|llm|large language model|language model|automated|email|mail|virtual) ?(?:assistant|agent|model|bot|tool|system)?\b",
+    ]),
+    ("seed_phrase", "Asks for a wallet seed / recovery phrase or private key", 6, [
+        r"\b(?:seed|recovery|secret recovery|backup|mnemonic|passphrase|wallet) (?:phrase|words|key)s?\b",
+        r"\b(?:12|twelve|24|twenty[- ]four|18)[- ]word(?:s)? (?:phrase|seed|key|backup)?\b",
+        r"\bprivate key\b",
+    ]),
+    ("wallet_drainer", "Asks you to connect your crypto wallet and sign/approve (wallet drainer)", 5, [
+        r"\bconnect (?:your |the )?(?:crypto |web3 )?wallet\b",
+        r"\b(?:sign|approve|confirm)\b(?: \w+){0,2} (?:the |a |this )?(?:transaction|message|permit|approval|contract|signature request)\b.{0,60}\b(?:claim|receive|airdrop|tokens?|nft|reward|unlock|validate|sync)\b",
+        r"\b(?:claim|receive|get)\b(?: \w+){0,3} (?:\$?[a-z]{2,6} )?(?:airdrop|free (?:tokens?|nfts?|mint))\b",
+        r"\bairdrop\b.{0,80}\b(?:wallet|claim|connect|sign)\b",
+        r"\bwallet (?:is )?(?:out of sync|not synced|desynchroni[sz]ed|compromised|needs? (?:validation|verification|rectification|synchroni[sz]ation))\b",
+    ]),
+    ("recovery_offer", "Offers to recover lost/scammed money, usually for a fee", 5, [
+        r"\b(?:recover|retrieve|get back|reclaim|trace)\b(?: \w+){0,3} (?:your )?(?:lost|stolen|scammed|missing)? ?(?:funds|money|crypto|bitcoin|assets|investment|savings)\b",
+        r"\b(?:fund|funds|asset|crypto|money|scam) recovery\b",
+        r"\b(?:lost|scammed|stolen)\b.{0,40}\b(?:we|our (?:team|agents|experts|hackers|lawyers))\b.{0,40}\b(?:recover|get (?:it|your money|your funds) back|retrieve)\b",
+        r"\b(?:ethical |certified |licensed )?hackers?\b.{0,40}\b(?:recover|retrieve|get back)\b",
+        r"\b(?:get|bring|win)\b (?:your |the |all your )?(?:lost )?(?:money|funds|crypto|bitcoin|investment|savings|deposit) back\b",
+        r"\brecovery (?:agents?|experts?|specialists?|services?|team|company|firm|attorneys?|lawyers?)\b",
+    ]),
     ("unauthorized_activity", "Describes transactions or account access you didn't make or approve", 3, [
         r"\b(?:i|we) (?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate|recogni[sz]e)\b",
         r"\b(?:i|we)\b[^.]{0,60}\b(?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate)\b",
@@ -185,6 +218,7 @@ REASSURING: list[tuple[str, str, int, list[str]]] = [
     ("dont_share_code", "Standard 'don't share this code' wording in a code you requested", -2, [
         rf"\b(?:{_NEG}) (?:share|give)\b.{{0,30}}\b(?:this |the )?code\b",
         r"\b(?:we|.{0,20}) will never (?:ask|call|text|email)\b.{0,30}\b(?:for )?(?:this |the |your )?code\b",
+        rf"\b(?:{_NEG}) (?:share|give|enter|type)\b.{{0,30}}\b(?:recovery|seed|secret) phrase\b",
     ]),
     ("verify_via_official", "Tells you to use the official app/number you already have", -2, [
         r"\b(?:number|phone number) on the back of your (?:card|debit card|credit card)\b",
@@ -240,7 +274,7 @@ TYPOLOGY_CUES: dict[str, tuple[list[str], list[str]]] = {
     "romance": (["romance_pretext"], [
         r"\b(?:love you|my love|darling|sweetheart|soulmate|dating|our future|marry|relationship|lonely|widow(?:er|ed)?)\b",
     ]),
-    "investment_crypto": ([], [
+    "investment_crypto": (["seed_phrase", "wallet_drainer", "recovery_offer"], [
         r"\b(?:invest\w*|trading (?:platform|app|account|firm|signals?)|signals|crypto\w*|bitcoin|usdt|forex|mining pool|liquidity|returns?|portfolio|profits?|withdraw(?:al)?|exchange|financial (?:advisor|mentor)|my (?:uncle|aunt|mentor) (?:is|works))\b",
     ]),
     "employment_task": (["job_too_easy"], [
@@ -289,6 +323,27 @@ def _quote(text: str, m: re.Match, limit: int = 180) -> str:
     return q
 
 
+def _negated(text: str, m: re.Match) -> bool:
+    """True if the match sits inside a negated clause ("we will never ask you to share the code").
+
+    Only the same clause (back to the previous sentence break, semicolon or dash) counts, so
+    boilerplate like "We never ask for codes. Read me the code." is NOT treated as negated.
+    """
+    head = text[:m.start()]
+    cut = max(head.rfind(c) for c in (".", "!", "?", ";", "\n", " - ", "—"))
+    clause = head[cut + 1:] if cut >= 0 else head
+    return bool(re.search(rf"\b{_NEG}\b", clause[-60:], re.I)) or bool(
+        re.match(rf"[^.;\n]{{0,6}}\b{_NEG}\b", text[m.start():m.end()], re.I))
+
+
+_QUOTES = "\"'\u201c\u201d\u2018\u2019\u00ab\u00bb"
+
+
+def _quoted(text: str, m: re.Match) -> bool:
+    before, after = text[max(0, m.start() - 3):m.start()], text[m.end():m.end() + 3]
+    return any(q in before for q in _QUOTES) and any(q in after for q in _QUOTES)
+
+
 def find_flags(text: str, table=FLAGS) -> list[Hit]:
     hits: list[Hit] = []
     low = text
@@ -297,8 +352,10 @@ def find_flags(text: str, table=FLAGS) -> list[Hit]:
         for p in pats:
             for m in re.finditer(p, low, re.I | re.M | re.S):
                 q = _quote(text, m)
-                if fid == "otp_request" and re.search(rf"\b{_NEG}\b[^.]{{0,25}}\b(?:share|give|tell|read|provide|send)\b", q, re.I):
-                    continue  # "never share this code" is a reassuring cue, not a request
+                if fid in ("otp_request", "seed_phrase") and _negated(low, m):
+                    continue  # "never share this code/phrase" is a reassuring cue, not a request
+                if fid == "ai_directed_text" and _quoted(low, m):
+                    continue  # quoting an injection phrase (e.g. in a security newsletter) is not an injection
                 if fid == "callback_number" and re.search(r"back of your (?:card|debit|credit)", q, re.I):
                     continue
                 if q not in ev:
@@ -332,3 +389,120 @@ def score_typology(text: str, flag_ids: set[str]) -> list[tuple[str, int]]:
     if "otp_request" in flag_ids and "marketplace" in scores:
         scores["marketplace"] += 1
     return sorted(scores.items(), key=lambda kv: -kv[1])
+
+
+# --------------------------------------------------------------------------
+# Normalization / de-obfuscation (run BEFORE matching)
+# --------------------------------------------------------------------------
+
+ZERO_WIDTH = re.compile("[­͏؜ᅟᅠ឴឵᠎​-‏‪-‮⁠-⁤⁦-⁯ㅤ﻿ﾠ]")
+_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i", "|": "l"})
+# Words scammers obfuscate to slip past filters. A leet token only counts as
+# evidence of obfuscation when it decodes to one of these.
+SENSITIVE_WORDS = {
+    "irs", "bitcoin", "btc", "crypto", "account", "verify", "verification", "password", "gift", "card", "cards", "paypal",
+    "bank", "warrant", "arrest", "payment", "pay", "code", "wallet", "police", "refund", "suspended", "social", "security",
+    "apple", "amazon", "usps", "login", "urgent", "tax", "taxes", "fbi", "zelle", "venmo", "cashapp", "seed", "phrase",
+    "invest", "profit", "deposit", "otp", "pin", "locked", "blocked", "fine", "penalty", "legal", "court", "jail", "free",
+    "winner", "prize", "claim", "click", "link", "chase", "wells", "fargo", "netflix", "microsoft",
+}
+_SPACED = re.compile(r"(?<![\w])(?:[A-Za-z][ .\-_*·]){2,}[A-Za-z](?![\w])")
+_LEET_TOKEN = re.compile(r"(?<![\w@$])[A-Za-z0-9@$!|]*[A-Za-z][A-Za-z0-9@$!|]*(?![\w@$])")
+
+
+@dataclass
+class Normalized:
+    text: str
+    zero_width: int = 0
+    spaced: list[str] = field(default_factory=list)
+    leet: list[str] = field(default_factory=list)
+    confusables: int = 0
+
+    @property
+    def obfuscated(self) -> bool:
+        return bool(self.zero_width or self.leet or len(self.spaced) >= 1 or self.confusables >= 2)
+
+
+def normalize_text(text: str) -> Normalized:
+    """NFKC, strip zero-width/bidi characters, re-join s p a c e d letters, decode l33t in sensitive words."""
+    zw = len(ZERO_WIDTH.findall(text))
+    t = ZERO_WIDTH.sub("", text)
+    nf = unicodedata.normalize("NFKC", t)
+    # Cyrillic/Greek look-alikes inside otherwise Latin words (е, о, а, р, с, х, і)
+    conf_map = str.maketrans("аеорсхуіјѕԁԛԝАВЕКМНОРСТХІЈЅοαρτνκιΑΒΕΗΙΚΜΝΟΡΤΧΥΖ",
+                             "aeopcxyijsdqwABEKMHOPCTXIJSoaptvkiABEHIKMNOPTXYZ")
+    conf = 0
+
+    def _fix_conf(m: re.Match) -> str:
+        nonlocal conf
+        w = m.group(0)
+        if re.search(r"[A-Za-z]", w) and re.search(r"[Ͱ-ϿЀ-ӿ]", w):
+            conf += 1
+            return w.translate(conf_map)
+        return w
+    nf = re.sub(r"[\w]+", _fix_conf, nf)
+    spaced: list[str] = []
+
+    def _join(m: re.Match) -> str:
+        joined = re.sub(r"[ .\-_*·]", "", m.group(0))
+        # leave real abbreviations like "U.S." / "a.m." alone unless they spell a sensitive word or are long
+        if joined.lower() in SENSITIVE_WORDS or len(joined) >= 4:
+            spaced.append(m.group(0))
+            return joined
+        return m.group(0)
+    nf = _SPACED.sub(_join, nf)
+    if spaced:
+        nf = re.sub(r"[ \t]{2,}", " ", nf)
+    leet: list[str] = []
+
+    def _deleet(m: re.Match) -> str:
+        w = m.group(0)
+        letters = sum(c.isalpha() for c in w)
+        others = len(w) - letters
+        if not others or letters < 2 or others > letters or len(w) > 20:
+            return w
+        d = w.translate(_LEET)
+        cands = {d.lower(), d.lower().replace("i", "l"), d.lower().rstrip("s")}
+        if cands & SENSITIVE_WORDS or any(c.startswith(("arrest", "warrant", "account", "verif", "gift", "bitcoin", "passw", "paypal", "suspend", "refund")) for c in cands):
+            leet.append(w)
+            return d
+        return w
+    nf = _LEET_TOKEN.sub(_deleet, nf)
+    return Normalized(nf, zw, spaced, leet, conf)
+
+
+# --------------------------------------------------------------------------
+# Language coverage: the rules are English-only. Say so instead of "legit".
+# --------------------------------------------------------------------------
+
+_EN_STOP = set("the an and or to of in on for your you is are be this that it we our with at by from please not have has will can if".split())
+# Frequent function words in languages scam texts commonly arrive in (es, pt, fr, de, it, romanized Hindi/Urdu, Tagalog).
+_OTHER_STOP = set((
+    "el la los las de del que y en su sus para por con una un es usted tu se al lo le ha sido este esta "
+    "o os da do das dos em uma não você seu sua com "
+    "le les des du et est vous votre pour avec une sur pas "
+    "der die das und ist sie ihr ihre mit für nicht ein eine zu von "
+    "il di che per non sono "
+    "aap aapka aapki aapke hai hain ho ka ki ke ko se mein nahi kya abhi karo kare jayega jaega warna bhejo "
+    "ang ng sa mga po ninyo"
+).split())
+_LATIN = re.compile(r"[A-Za-zÀ-ɏ]")
+
+
+def language_coverage(text: str) -> dict:
+    """Return {'covered': bool, 'reason': str}. Heuristic, stdlib-only, no language model."""
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return {"covered": True, "reason": ""}
+    non_latin = sum(1 for c in letters if not _LATIN.match(c))
+    if non_latin / len(letters) > 0.3:
+        return {"covered": False, "reason": "non-Latin script"}
+    words = re.findall(r"[A-Za-zÀ-ɏ']+", text.lower())
+    if len(words) < 6:
+        return {"covered": True, "reason": ""}
+    en = sum(1 for w in words if w in _EN_STOP)
+    other = sum(1 for w in words if w in _OTHER_STOP and w not in _EN_STOP)
+    accented = sum(1 for c in letters if "\u00c0" <= c <= "\u024f")
+    if en / len(words) < 0.06 or (accented >= 3 and en / len(words) < 0.12) or (other >= 3 and other > 1.5 * en):
+        return {"covered": False, "reason": "text does not look like English"}
+    return {"covered": True, "reason": ""}

@@ -295,7 +295,80 @@ class UrlReport:
         return d
 
 
+
+# --------------------------------------------------------------------------
+# Redirect / link-wrapper unwrapping (offline: parsed from the URL string)
+# --------------------------------------------------------------------------
+
+# (host suffix, path prefix, query keys, kind). "open_redirect" wrappers can point anywhere,
+# so they must never lend their own reputation to the destination. "security_rewrite"
+# wrappers (SafeLinks, urldefense) are added by the recipient's mail gateway.
+WRAPPERS = [
+    ("google.com", "/url", ("q", "url"), "open_redirect"),
+    ("google.com", "/amp/s/", (), "open_redirect"),
+    ("l.facebook.com", "/l.php", ("u",), "open_redirect"),
+    ("lm.facebook.com", "/l.php", ("u",), "open_redirect"),
+    ("l.instagram.com", "/", ("u",), "open_redirect"),
+    ("l.messenger.com", "/l.php", ("u",), "open_redirect"),
+    ("t.umblr.com", "/redirect", ("z",), "open_redirect"),
+    ("youtube.com", "/redirect", ("q",), "open_redirect"),
+    ("linkedin.com", "/redir/redirect", ("url",), "open_redirect"),
+    ("safelinks.protection.outlook.com", "/", ("url",), "security_rewrite"),
+    ("urldefense.proofpoint.com", "/v2/url", ("u",), "security_rewrite"),
+    ("urldefense.com", "/v3/", (), "security_rewrite"),
+]
+
+
+def _proofpoint_v2(u: str) -> str:
+    return urllib.parse.unquote(u.replace("-", "%").replace("_", "/"))
+
+
+def unwrap(url: str, depth: int = 0) -> tuple[str, list[tuple[str, str]]]:
+    """Return (final_url, [(wrapper_host, kind), ...]) without any network access."""
+    if depth > 4:
+        return url, []
+    parts = normalize(url)
+    host = (parts.hostname or "").lower()
+    q = urllib.parse.parse_qs(parts.query)
+    for suffix, prefix, keys, kind in WRAPPERS:
+        if not (host == suffix or host.endswith("." + suffix)) or not parts.path.startswith(prefix):
+            continue
+        inner = None
+        if suffix == "urldefense.com":
+            m = re.match(r"/v3/__(.+?)__;", parts.path + ("?" + parts.query if parts.query else ""))
+            inner = m.group(1) if m else None
+        elif suffix == "google.com" and prefix == "/amp/s/":
+            inner = "https://" + parts.path[len(prefix):]
+        else:
+            for k in keys:
+                if q.get(k):
+                    inner = q[k][0]
+                    break
+            if inner and suffix == "urldefense.proofpoint.com":
+                inner = _proofpoint_v2(inner)
+        if inner and re.match(r"(?i)^(?:https?:)?//|^www\.", inner.strip()):
+            inner = inner.strip()
+            if inner.startswith("//"):
+                inner = "https:" + inner
+            final, chain = unwrap(inner, depth + 1)
+            return final, [(host, kind)] + chain
+    return url, []
+
+
 def analyze_url(url: str) -> UrlReport:
+    final, chain = unwrap(url)
+    if chain:
+        rep = analyze_url(final)
+        rep.url = url
+        opens = [h for h, k in chain if k == "open_redirect"]
+        if opens:
+            rep.findings.insert(0, Finding("redirect_wrapper", "medium", 2 if not rep.official_brand else 0,
+                                           f"Link is wrapped in a redirect through {opens[0]}; it really goes to {rep.registrable_domain}. "
+                                           "The wrapper's reputation says nothing about the destination."))
+        else:
+            rep.findings.insert(0, Finding("security_rewrite", "info", 0,
+                                           f"Link was rewritten by your mail security gateway ({chain[0][0]}); analyzed the original destination {rep.registrable_domain}."))
+        return rep
     parts = normalize(url)
     netloc = parts.netloc
     userinfo = ""
@@ -392,7 +465,7 @@ def analyze_url(url: str) -> UrlReport:
 # Optional online lookups (explicit opt-in only)
 # --------------------------------------------------------------------------
 
-UA = "scam-signal/0.1 (+https://github.com/bishtashish708/scam-signal)"
+UA = "scam-signal/0.2 (+https://github.com/bishtashish708/scam-signal)"
 
 
 def rdap_lookup(domain: str, timeout: float = 8.0) -> dict:

@@ -46,5 +46,5 @@ Someone posing as your bank's fraud team gets you to move money to a 'safe accou
 - Robocalls/spoofed caller ID: FCC: https://consumercomplaints.fcc.gov
 
 ---
-*scam-signal v0.1.0: local rule-based signals (score 9). This is guidance, not a guarantee and not legal advice. When in doubt, contact the organization through a channel you look up yourself.*
+*scam-signal v0.2.0: local rule-based signals (score 9). This is guidance, not a guarantee and not legal advice. When in doubt, contact the organization through a channel you look up yourself.*
 

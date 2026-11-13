@@ -10,7 +10,7 @@ Official process: [Submit your plugin](https://claude.com/docs/plugins/submit) a
 |---|---|
 | Repository | `bishtashish708/scam-signal` |
 | Plugin path | *(empty: `.claude-plugin/plugin.json` is at the repo root)* |
-| Branch or tag | *(empty: follows `main`)*, or tag `v0.1.0` to pin a release |
+| Branch or tag | *(empty: follows `main`)*, or a release tag (e.g. `v0.2.0`) to pin it |
 
 Then select **Validate**. Fix anything marked **Blocking**, push, and select **Re-validate**.
 
@@ -20,7 +20,7 @@ Then select **Validate**. Fix anything marked **Blocking**, push, and select **R
 |---|---|
 | `claude plugin validate .` | ✔ passes, no warnings |
 | Name: lowercase/digits/hyphens, distinctive, not a reserved word or brand | `scam-signal` ✔ |
-| `description`, `author`, `version` set | ✔ (0.1.0) |
+| `description`, `author`, `version` set | ✔ |
 | README ≥ 40 words, LICENSE present, `license` in plugin.json | ✔ MIT |
 | No `.DS_Store` / `__MACOSX`; no symlinks, submodules or LFS | ✔ (caches and `dist/` are gitignored) |
 | Non-image files < 256 KiB; ≤ 512 files; only text + PNG/GIF | ✔ (`docs/demo.gif` is an image) |
