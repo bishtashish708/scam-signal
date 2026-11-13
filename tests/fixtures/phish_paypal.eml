@@ -1,0 +1,33 @@
+Authentication-Results: mx.example-recipient.net; spf=softfail smtp.mailfrom=paypa1-resolution.com; dkim=none; dmarc=fail header.from=paypa1-resolution.com
+Authentication-Results: forged.example; spf=pass; dkim=pass; dmarc=pass
+Received: from mail.paypa1-resolution.com (203.0.113.9) by mx.example-recipient.net
+Return-Path: <bounce@bulk-sender.example>
+From: "PayPal Service" <service@paypa1-resolution.com>
+Reply-To: claims@resolutioncentre-help.net
+To: alex@example.org
+Subject: Your account is limited
+Message-ID: <abc123@bulk-sender.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUND"
+
+--BOUND
+Content-Type: multipart/alternative; boundary="ALT"
+
+--ALT
+Content-Type: text/plain; charset=utf-8
+
+We noticed unusual activity. Your account has been restricted. Please confirm your card details within 24 hours.
+
+--ALT
+Content-Type: text/html; charset=utf-8
+
+<p>We noticed unusual activity. Your account has been restricted.</p>
+<p>Please confirm your card details within 24 hours: <a href="https://paypa1-resolution.com/secure">https://www.paypal.com/resolution</a></p>
+
+--ALT--
+--BOUND
+Content-Type: text/html; name="Secure_Message.html"
+Content-Disposition: attachment; filename="Secure_Message.html"
+
+<html>synthetic placeholder</html>
+--BOUND--

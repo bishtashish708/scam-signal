@@ -1,0 +1,17 @@
+{
+  "name": "scam-signal",
+  "description": "scam-signal: detection-first scam checker skill for Claude.",
+  "owner": {
+    "name": "bishtashish708",
+    "url": "https://github.com/bishtashish708"
+  },
+  "plugins": [
+    {
+      "name": "scam-signal",
+      "source": "./",
+      "description": "Check whether a message, email, screenshot, call or link is a scam, and know what to do and where to report it.",
+      "version": "0.1.0",
+      "category": "security"
+    }
+  ]
+}

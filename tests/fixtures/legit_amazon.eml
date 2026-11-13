@@ -1,0 +1,11 @@
+Authentication-Results: mx.google.com; spf=pass smtp.mailfrom=bounces.amazon.com; dkim=pass header.d=amazon.com; dmarc=pass header.from=amazon.com
+Return-Path: <bounce@bounces.amazon.com>
+From: "Amazon.com" <shipment-tracking@amazon.com>
+To: alex@example.org
+Subject: Your Amazon.com order has shipped
+Message-ID: <0100abc@email.amazon.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<p>Your package with Kitchen Scale is on the way.</p>
+<p><a href="https://www.amazon.com/gp/your-account/order-history">Track your package</a></p>

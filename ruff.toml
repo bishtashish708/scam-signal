@@ -1,0 +1,9 @@
+line-length = 140
+target-version = "py39"
+
+[lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = ["E501", "B905"]
+
+[lint.isort]
+known-first-party = ["analyze", "email_headers", "redact", "signals", "taxonomy", "url_check", "run_eval", "imessage_scan", "cfb_writer", "_paths"]

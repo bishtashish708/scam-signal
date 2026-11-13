@@ -1,0 +1,29 @@
+{
+  "name": "scam-signal",
+  "displayName": "scam-signal",
+  "version": "0.1.0",
+  "description": "Is this a scam? Analyze texts, emails, screenshots, calls and links (or triage your inbox via a mail connector) and get the scam type mapped to FTC/IC3/CFPB categories, ranked red flags with evidence, a risk level, what to do now, and official reporting links. Detection-only, privacy-first.",
+  "author": {
+    "name": "bishtashish708",
+    "url": "https://github.com/bishtashish708"
+  },
+  "homepage": "https://github.com/bishtashish708/scam-signal",
+  "repository": "https://github.com/bishtashish708/scam-signal",
+  "license": "MIT",
+  "keywords": [
+    "scam",
+    "fraud",
+    "phishing",
+    "smishing",
+    "security",
+    "consumer-protection",
+    "email",
+    "ftc",
+    "ic3",
+    "cfpb"
+  ],
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://github.com/bishtashish708/scam-signal#readme",
+  "supportUrl": "https://github.com/bishtashish708/scam-signal/issues",
+  "privacyPolicyUrl": "https://github.com/bishtashish708/scam-signal/blob/main/PRIVACY.md"
+}
