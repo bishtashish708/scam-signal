@@ -105,6 +105,46 @@ TYPOLOGY: dict[str, dict] = {
         "cfpb": "Fraud or scam",
         "summary": "Threatens to release intimate images or 'recordings' unless you pay, usually in crypto. Mass-mailed versions often contain no real material.",
     },
+    "bec_payment_redirect": {
+        "name": "Changed bank details / payment redirection (business email compromise)",
+        "stage1": "scam",
+        "ftc": "Imposter scams: business imposter",
+        "ic3": "Business Email Compromise (BEC)",
+        "cfpb": "Fraud or scam (Money transfer / wire)",
+        "summary": "An email that looks like it's from a vendor, landlord, title company, lawyer, employer or colleague says the bank details have changed and asks you to pay an invoice, deposit, closing funds or payroll to a new account. The mailbox is often hacked or a lookalike.",
+    },
+    "fake_invoice": {
+        "name": "Fake invoice / renewal / bill",
+        "stage1": "scam",
+        "ftc": "Imposter scams: business imposter (fake renewal or invoice)",
+        "ic3": "Phishing/Spoofing; Tech Support (callback phishing)",
+        "cfpb": "Fraud or scam",
+        "summary": "An invoice, receipt or PDF bill for something you didn't order (an antivirus renewal, a PayPal purchase, a domain or listing fee) pushes you to call a 'support' number or pay. The call then turns into a refund or remote-access scam.",
+    },
+    "qr_phishing": {
+        "name": "QR-code phishing (quishing)",
+        "stage1": "scam",
+        "ftc": "Imposter scams: business imposter",
+        "ic3": "Phishing/Spoofing",
+        "cfpb": "Fraud or scam",
+        "summary": "A QR code on a parking meter sticker, flyer, letter, email or PDF leads to a fake payment or login page. QR codes hide the destination and slip past email link scanners.",
+    },
+    "wallet_drainer": {
+        "name": "Crypto wallet drainer (connect / sign to claim)",
+        "stage1": "scam",
+        "ftc": "Imposter scams; cryptocurrency",
+        "ic3": "Phishing/Spoofing (cryptocurrency)",
+        "cfpb": "Fraud or scam (virtual currency)",
+        "summary": "An airdrop, free mint, 'wallet sync' or support message gets you to connect your wallet and sign an approval, or to type your recovery phrase. That hands over control and the wallet is emptied.",
+    },
+    "recovery_scam": {
+        "name": "Fund-recovery scam (targets past victims)",
+        "stage1": "scam",
+        "ftc": "Imposter scams (often posing as a law firm, agency or 'ethical hackers')",
+        "ic3": "Government Impersonation; Advanced Fee (fund recovery)",
+        "cfpb": "Fraud or scam",
+        "summary": "Someone promises to recover money you lost to an earlier scam, for an upfront fee, tax or 'release' payment. Real agencies and police don't charge to recover funds.",
+    },
     "account_takeover": {
         "name": "Unauthorized transaction / account takeover (not a scam)",
         "stage1": "non_consensual_fraud",
@@ -154,6 +194,11 @@ REPORT_BY_TYPE = {
     "family_emergency": ["ftc", "ic3", "elder"],
     "prize_advance_fee": ["ftc", "ic3"],
     "extortion": ["ic3", "ncmec", "platform"],
+    "bec_payment_redirect": ["bank", "ic3", "ftc"],
+    "fake_invoice": ["bank", "ftc", "ic3"],
+    "qr_phishing": ["bank", "ftc", "ic3"],
+    "wallet_drainer": ["ic3", "ftc", "platform"],
+    "recovery_scam": ["ic3", "ftc"],
     "account_takeover": ["bank", "idtheft", "cfpb", "ftc"],
     "unclear": ["ftc"],
 }
@@ -190,6 +235,26 @@ DO_NOW_BY_TYPE = {
         "Pay only through the platform's protected checkout; P2P apps like Zelle and Cash App are meant for people you know and have little purchase protection.",
         "Never share a verification code (e.g. Google Voice) to 'prove you're real'. Don't accept overpayments, and don't refund 'the difference'.",
         "For rentals, see the property in person and verify the owner before paying any deposit.",
+    ],
+    "bec_payment_redirect": [
+        "Before paying to new or changed bank details, call the person or company on a number you already have (old invoice, contract, website typed by hand), not one in the email.",
+        "If you already sent the payment: call your bank's fraud line now and ask for a wire recall. Hours matter.",
+    ],
+    "fake_invoice": [
+        "Don't call the phone number on the invoice. Check your account directly in the official app or website.",
+        "Never let a 'refund' agent connect to your computer, and never send back an 'over-refund'.",
+    ],
+    "qr_phishing": [
+        "Don't scan QR codes on stickers, flyers or unexpected letters or emails to pay or log in. Use the official app or type the address yourself.",
+        "To check a code safely, preview it: the iPhone camera and Google Lens show the link before opening it. Read the domain, but don't tap it.",
+    ],
+    "wallet_drainer": [
+        "Never type your recovery phrase anywhere except your own wallet on your own device. No support team or airdrop needs it.",
+        "Don't connect your wallet to sites from DMs, replies or ads. If you signed something, revoke approvals with your wallet's official tools and move funds to a new wallet.",
+    ],
+    "recovery_scam": [
+        "Real police and agencies never charge a fee to recover your money. Anyone asking for one is running a second scam.",
+        "Report the original loss yourself (IC3/FTC, or your country's equivalent) and work with your bank.",
     ],
     "romance": [
         "Don't send money, gift cards or crypto to someone you've only met online, whatever the emergency.",
@@ -228,3 +293,77 @@ IF_ALREADY_ACTED = [
     "Shared your SSN or ID: go to IdentityTheft.gov and freeze your credit.",
     "Beware 'recovery' services that contact you promising to get the money back. That is a second scam.",
 ]
+
+
+# --------------------------------------------------------------------------
+# Reporting outside the U.S.  Keep in sync with references/reporting.md.
+# Only contacts confirmed on official or reputable sources (Nov 2026) are listed.
+# --------------------------------------------------------------------------
+
+COUNTRY_REPORTING: dict[str, dict] = {
+    "us": {"name": "United States"},  # uses LINKS / REPORT_BY_TYPE above
+    "uk": {"name": "United Kingdom", "report": [
+        ("Report Fraud (formerly Action Fraud), England, Wales & Northern Ireland: reportfraud.police.uk or 0300 123 2040", "https://www.reportfraud.police.uk"),
+        ("Scotland: Police Scotland on 101", None),
+        ("Call 159 to reach your bank's fraud team safely (most UK banks)", None),
+        ("Scam texts: forward to 7726 (free)", None),
+        ("Scam emails: forward to report@phishing.gov.uk (NCSC)", None),
+    ], "note": "If you were tricked into sending a bank payment, tell your bank right away: UK payment-scam reimbursement rules may apply."},
+    "in": {"name": "India", "report": [
+        ("Money lost? Call 1930 (National Cyber Crime Helpline) immediately", None),
+        ("File a complaint at cybercrime.gov.in", "https://cybercrime.gov.in"),
+        ("Suspicious call/SMS/WhatsApp (no money lost): report on Chakshu, Sanchar Saathi", "https://sancharsaathi.gov.in/sfc/"),
+        ("Your bank: report unauthorized electronic transactions at once (RBI rules limit your liability if you report quickly)", None),
+    ], "note": "Never share an OTP, UPI PIN, or screen-share with anyone who calls you."},
+    "au": {"name": "Australia", "report": [
+        ("Scamwatch (National Anti-Scam Centre)", "https://www.scamwatch.gov.au/report-a-scam"),
+        ("ReportCyber, if you lost money or data to cybercrime", "https://www.cyber.gov.au/report-and-recover"),
+        ("IDCARE, identity and cyber support", "https://www.idcare.org"),
+        ("Your bank, using the number on your card or in its app", None),
+    ]},
+    "ca": {"name": "Canada", "report": [
+        ("Canadian Anti-Fraud Centre: 1-888-495-8501", "https://reportcyberandfraud.canada.ca"),
+        ("Scam texts: forward to 7726 (SPAM)", None),
+        ("Your bank, and local police if you lost money", None),
+    ]},
+    "ie": {"name": "Ireland", "report": [
+        ("Your bank first, then your local Garda station", "https://www.garda.ie"),
+        ("FraudSMART (Banking & Payments Federation Ireland) guidance", "https://www.fraudsmart.ie"),
+    ], "note": "EU countries: report to your national police and your bank. Each country runs its own fraud-reporting service."},
+    "eu": {"name": "EU (other)", "report": [
+        ("Your bank or payment provider, immediately", None),
+        ("Your national police (most have an online fraud/cybercrime report form)", None),
+    ], "note": "I'm less certain of local specifics outside the countries listed. Check your national police site."},
+    "nz": {"name": "New Zealand", "report": [
+        ("Scam texts: forward to 7726 (free, Department of Internal Affairs)", None),
+        ("Netsafe takes reports of all scams", "https://netsafe.org.nz"),
+        ("NCSC (formerly CERT NZ) for cyber incidents", "https://www.ncsc.govt.nz"),
+        ("Your bank, and Police on 105 if you lost money", None),
+    ]},
+}
+
+_COUNTRY_CUES = [
+    ("in", r"\b(?:upi|aadhaar|aadhar|pan card|paytm|phonepe|bhim|\+91[\s-]?\d|rs\.? ?\d|inr|lakh|crore|kyc (?:update|pending|expired)|rbi|sbi|hdfc|icici|trai|dot|cyber cell|\bmumbai|\bdelhi)\b|₹"),
+    ("uk", r"\b(?:hmrc|dvla|royal mail|nhs|council tax|tv licen[cs]e|\+44[\s-]?\d|sort code|ofcom|barclays|natwest|lloyds|halifax|santander uk|monzo|evri|post office uk)\b|£"),
+    ("au", r"\b(?:ato|mygov|centrelink|medicare card|australia ?post|auspost|\+61[\s-]?\d|commbank|westpac|anz|nab|linkt|e-?toll)\b|a\$"),
+    ("ca", r"\b(?:cra|canada revenue|service canada|sin number|interac|e-?transfer|canada post|\+1[\s-]?(?:416|604|514|403|613|647)|rbc|td canada|scotiabank|bmo)\b|c\$"),
+    ("nz", r"\b(?:ird|inland revenue nz|nz post|waka kotahi|nzta|\+64[\s-]?\d|kiwibank|asb)\b|nz\$"),
+    ("ie", r"\b(?:revenue\.ie|an post|garda|\+353|ppsn|aib|bank of ireland|permanent tsb)\b"),
+    ("us", r"\b(?:irs|ssa|social security|usps|zelle|venmo|cash ?app|e-?zpass|sunpass|medicare|\+1[\s-]?\d{3})\b"),
+]
+
+
+def guess_country(text: str) -> str | None:
+    """Best-effort country hint from currency, phone prefixes and institutions. None = unclear (ask)."""
+    import re
+    hits = {}
+    for cc, pat in _COUNTRY_CUES:
+        n = len(re.findall(pat, text, re.I))
+        if n:
+            hits[cc] = n
+    if not hits:
+        return None
+    best = sorted(hits.items(), key=lambda kv: -kv[1])
+    if len(best) > 1 and best[0][1] == best[1][1]:
+        return None
+    return best[0][0]

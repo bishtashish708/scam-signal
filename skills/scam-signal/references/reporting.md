@@ -1,4 +1,4 @@
-# What to do now and where to report (U.S.-first)
+# What to do now and where to report
 
 ## Always
 
@@ -41,4 +41,60 @@
 | **NCMEC** | Sextortion involving a minor | https://report.cybertip.org |
 | **The platform** | Marketplace, dating app, social DM | Report the profile/listing in the app |
 
-Outside the U.S.: point to the national equivalent (e.g. UK: forward texts to 7726, emails to report@phishing.gov.uk; Canada: Canadian Anti-Fraud Centre). Say you're less certain of local specifics and suggest the user confirm.
+## Outside the U.S.
+
+**If the country isn't clear, ask once.** Look for cues first: currency (£, ₹, A$, C$, NZ$, €), phone prefix (+44, +91, +61, +1, +64, +353), or institutions (HMRC, Royal Mail, UPI/Aadhaar, Centrelink/ATO, CRA/Interac, IRD). In every country: stop paying, call your bank on its official number, and keep evidence.
+
+These contacts were checked against official or reputable sources in November 2026. Services get renamed, so if a link redirects, follow the official redirect.
+
+### United Kingdom
+| Where | When |
+|---|---|
+| **Report Fraud** (formerly Action Fraud): reportfraud.police.uk · 0300 123 2040 | England, Wales & Northern Ireland: any fraud or cybercrime. It replaced Action Fraud in Dec 2025, and old links redirect. |
+| **Police Scotland: 101** | Scotland |
+| **159** | Reaches most UK banks' fraud teams safely. Use it when someone claiming to be your bank calls. |
+| **7726** | Forward scam texts (free) |
+| **report@phishing.gov.uk** | Forward scam emails (NCSC) |
+| Your bank, at once | If you were tricked into a bank transfer, UK payment-scam reimbursement rules may apply. Ask the bank. |
+
+### India
+| Where | When |
+|---|---|
+| **1930**, National Cyber Crime Helpline | **Money lost: call immediately.** The first hours matter for freezing funds. |
+| **cybercrime.gov.in** | File the complaint (financial fraud, sextortion, etc.) |
+| **Chakshu** on Sanchar Saathi: sancharsaathi.gov.in/sfc | Suspicious calls, SMS or WhatsApp messages where **no money was lost** (it does not recover money) |
+| Your bank / UPI app | Report unauthorized transactions at once. RBI rules limit customer liability when it's reported quickly. Block UPI, cards and netbanking. |
+
+Never share an OTP or UPI PIN, never install screen-sharing apps (AnyDesk, etc.) for callers, and remember that police and agencies don't "digitally arrest" people over video calls.
+
+### Australia
+| Where | When |
+|---|---|
+| **Scamwatch** (National Anti-Scam Centre): scamwatch.gov.au | Any scam |
+| **ReportCyber**: cyber.gov.au | Cybercrime, or money or data lost (passed to police) |
+| **IDCARE**: idcare.org | Identity documents or personal data exposed |
+| Your bank | Immediately, on the number on your card or in the app |
+
+### Canada
+| Where | When |
+|---|---|
+| **Canadian Anti-Fraud Centre**: 1-888-495-8501 · reportcyberandfraud.canada.ca | Any fraud or scam |
+| **7726** | Forward scam texts (SPAM) |
+| Your bank, local police | Money lost |
+
+### Ireland / EU
+| Where | When |
+|---|---|
+| Your bank, then your **local Garda station** (garda.ie) | Ireland: money lost or details shared |
+| **FraudSMART** (fraudsmart.ie) | Ireland: bank-industry fraud guidance |
+| National police + your bank | Other EU countries. Most police forces have an online fraud form. Say you're less certain of local specifics. |
+
+### New Zealand
+| Where | When |
+|---|---|
+| **7726** | Forward scam texts (free, Department of Internal Affairs) |
+| **Netsafe**: netsafe.org.nz | Any scam, whether online, phone or text |
+| **NCSC** (formerly CERT NZ): ncsc.govt.nz | Cyber incidents |
+| Your bank; Police on **105** | Money lost |
+
+Other countries: point to the national police or consumer-protection agency and the user's bank. Say you're less certain of local specifics and suggest the user confirm.

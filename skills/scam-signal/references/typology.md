@@ -97,3 +97,20 @@ A **preliminary keyword scan** of those narratives (not a validated classifier; 
 Two takeaways shape this skill: (1) roughly a seventh of complaints describe **unauthorized** activity rather than a scam, so the tool always checks which side of that line a story falls on; (2) **marketplace** and **bank-impersonation** patterns are prominent on P2P rails, so those get detailed handling.
 
 Public agency figures (check the latest annual reports for current numbers): the FTC's Consumer Sentinel data for 2024 reported about $12.5B in consumer fraud losses, with **imposter scams** the most-reported category and **investment scams** the largest losses. The FBI IC3 2024 report recorded about $16.6B in losses, with **phishing/spoofing** the most-reported crime type and **investment fraud** the costliest.
+
+
+---
+
+## Added in v0.3
+
+| Type (`id`) | Stage 1 | FTC Consumer Sentinel | FBI IC3 | CFPB | What it looks like |
+|---|---|---|---|---|---|
+| Changed bank details / payment redirection (`bec_payment_redirect`) | scam | Imposter: business | **Business Email Compromise** | Fraud or scam (money transfer) | "Our bank details have changed, pay invoice #… to the new account". Also used for real-estate closing funds, payroll direct-deposit changes, landlord deposits. Often sent from a hacked or lookalike mailbox. |
+| Fake invoice / renewal (`fake_invoice`) | scam | Imposter: business | Phishing/Spoofing; Tech Support (callback) | Fraud or scam | An invoice or PDF "receipt" for something you didn't buy (PayPal, Geek Squad, antivirus, a domain listing), with a phone number to "cancel". *If it pairs with a device scare or remote access, use* `tech_support_refund`. |
+| QR-code phishing (`qr_phishing`) | scam | Imposter: business | Phishing/Spoofing | Fraud or scam | Stickers on parking meters and EV chargers, letters, emails or PDFs that say "scan to pay / re-verify MFA". The QR hides the destination from the user and from mail filters. |
+| Crypto wallet drainer (`wallet_drainer`) | scam | Imposter; cryptocurrency | Phishing/Spoofing (crypto) | Fraud or scam (virtual currency) | Airdrop, free mint, "wallet out of sync", fake support. You "connect wallet and sign", or are asked for the recovery phrase. |
+| Fund-recovery scam (`recovery_scam`) | scam | Imposter (law firm, agency, "ethical hackers") | Government Impersonation; Advanced Fee | Fraud or scam | Targets past victims: "we traced your lost funds", fee or tax up front. Agencies and police never charge to recover money. |
+
+Mappings for these five are best-fit. FTC and IC3 don't have exact categories for every subtype, so name the subtype in the free-text field when reporting.
+
+**Multi-message long cons.** Pig-butchering (`investment_crypto`), job/task (`employment_task`) and romance (`romance`) often look harmless message by message. Use a chat export and look at the progression of stages (`scripts/chat_export.py`).

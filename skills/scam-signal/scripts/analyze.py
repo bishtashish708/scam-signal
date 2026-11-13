@@ -28,6 +28,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import chat_export  # noqa: E402
+
 import email_headers  # noqa: E402
 import redact  # noqa: E402
 import signals  # noqa: E402
@@ -40,7 +42,8 @@ DECEPTION_FLAGS = {
     "safe_account", "otp_request", "remote_access", "gift_card_payment", "overpayment", "too_good",
     "romance_pretext", "family_pretext", "job_too_easy", "advance_fee", "sextortion", "tech_scare",
     "link_activation_trick", "delivery_fee", "secrecy", "stay_on_line", "crypto_payment",
-    "seed_phrase", "wallet_drainer", "recovery_offer", "ai_directed_text",
+    "seed_phrase", "wallet_drainer", "recovery_offer", "ai_directed_text", "changed_bank_details", "fake_invoice",
+    "qr_code_lure",
 }
 # A request for money, codes or credentials. When one is present, reassuring boilerplate
 # ("we'll never ask for your code", "call the number on your card") must not cancel it out:
@@ -48,6 +51,7 @@ DECEPTION_FLAGS = {
 ASK_FLAGS = {
     "safe_account", "otp_request", "credential_request", "gift_card_payment", "crypto_payment", "unusual_payment",
     "remote_access", "advance_fee", "overpayment", "delivery_fee", "seed_phrase", "wallet_drainer", "recovery_offer",
+    "changed_bank_details", "qr_code_lure",
 }
 FIRST_PERSON_UNAUTH = re.compile(
     r"\b(?:i|we) (?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate|recogni[sz]e)\b"
@@ -78,7 +82,7 @@ def looks_like_email(text: str) -> bool:
 
 def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes | None = None,
             urls: list[str] | None = None, channel: str = "unknown",
-            online: dict | None = None) -> dict:
+            online: dict | None = None, country: str | None = None) -> dict:
     online = online or {}
     em = None
     if email_path or raw_email is not None:
@@ -89,6 +93,13 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
         text = "\n".join(x for x in (em.subject, em.body_text, em.hidden_text, em.alt_text) if x)
         channel = "email"
     body = text or ""
+    chat = None
+    if not em:
+        msgs = chat_export.parse(body)
+        if msgs:
+            chat = chat_export.summarize(msgs)
+            body = "\n".join(m.text for m in msgs)
+            channel = "chat" if channel == "unknown" else channel
 
     norm = signals.normalize_text(body)
     hits = signals.find_flags(norm.text)
@@ -99,6 +110,15 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
         if norm.confusables:
             ev.append(f"{norm.confusables} word(s) mixing Latin with Cyrillic/Greek look-alike letters")
         hits.append(signals.Hit("obfuscated_text", "Text is disguised to slip past filters (hidden characters, l33t or s p a c e d letters)", 3, ev))
+    top_scheme = None
+    if chat and chat["schemes"]:
+        top_scheme = chat["schemes"][0]
+        if top_scheme["strength"] >= 2:
+            ev = [f"{h['label']} (msg {h['index'] + 1}, {h['date']}): \"{h['quote'][:110]}\"" for h in top_scheme["hits"]]
+            hits.append(signals.Hit("chat_progression",
+                                    f"Conversation follows the {top_scheme['name']} playbook "
+                                    f"({top_scheme['stages_reached']}/{top_scheme['total_stages']} stages)",
+                                    6 if top_scheme["strength"] == 3 else 3, ev))
     flag_ids = {h.id for h in hits}
     coverage = signals.language_coverage(body)
 
@@ -149,6 +169,8 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
 
     # ---- classification ----
     typ_scores = signals.score_typology(norm.text + " " + " ".join(r.host_decoded for r in url_reports), flag_ids)
+    if top_scheme and top_scheme["strength"] >= 2:
+        typ_scores = [(top_scheme["typology"], 99)] + [t for t in typ_scores if t[0] != top_scheme["typology"]]
     fraud_narrative = bool(FIRST_PERSON_UNAUTH.search(body)) and not (DECEPTION_FLAGS & flag_ids) and total < 12
     if fraud_narrative:
         label, typ = "fraud", "account_takeover"
@@ -211,6 +233,19 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
     if label == "scam" and channel == "call" and "fcc" not in report_keys:
         report_keys.append("fcc")
     reporting = [{"name": taxonomy.LINKS[k][0], "url": taxonomy.LINKS[k][1]} for k in report_keys]
+    cc, cc_source = (country.lower(), "given") if country else (taxonomy.guess_country(body), "guessed")
+    if cc not in taxonomy.COUNTRY_REPORTING:
+        cc, cc_source = "us", "assumed"
+    country_note = None
+    if cc != "us" and label in ("scam", "fraud"):
+        info_c = taxonomy.COUNTRY_REPORTING[cc]
+        reporting = [{"name": n, "url": u} for n, u in info_c["report"]]
+        if "platform" in report_keys:
+            reporting.append({"name": taxonomy.LINKS["platform"][0], "url": None})
+        country_note = info_c.get("note")
+    if cc_source == "assumed" and label in ("scam", "fraud"):
+        country_note = ("Reporting links are for the U.S. Tell me your country for local ones "
+                        "(UK, India, Australia, Canada, Ireland/EU, New Zealand are built in).")
 
     return {
         "tool": "scam-signal", "version": VERSION, "channel": channel,
@@ -227,8 +262,10 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
         "do_now": do_now,
         "if_already_acted": taxonomy.IF_ALREADY_ACTED if label in ("scam", "fraud") else [],
         "report_to": reporting if label != "unsupported" else [],
+        "country": {"code": cc, "source": cc_source, "note": country_note},
         "urls": [r.to_dict() for r in url_reports],
         "email": em.to_dict() if em else None,
+        "chat": chat,
         "network_used": {k: v for k, v in online.items() if v},
     }
 
@@ -253,6 +290,14 @@ def to_markdown(res: dict) -> str:
             ev = f" \"{f['evidence'][0]}\"" if f["evidence"] else ""
             L.append(f"{i}. **{f['label']}**:{ev}")
         L.append("")
+    if res.get("chat") and res["chat"]["schemes"]:
+        c = res["chat"]
+        L.append(f"## Conversation stages ({c['messages']} messages, {c['first']} to {c['last']})\n")
+        for sc in c["schemes"][:2]:
+            L.append(f"**{sc['name']}**: {sc['stages_reached']}/{sc['total_stages']} stages" + ("" if sc["in_order"] else " (out of order)"))
+            for h in sc["hits"]:
+                L.append(f"- {h['label']}: msg {h['index'] + 1} ({h['date']}): \"{h['quote'][:140]}\"")
+            L.append("")
     if res["reassuring_signals"]:
         L.append("## Reassuring signs (scammers can fake these too)\n")
         for f in res["reassuring_signals"]:
@@ -266,9 +311,13 @@ def to_markdown(res: dict) -> str:
         for s in res["if_already_acted"]:
             L.append(f"- {s}")
     if res["report_to"]:
-        L.append("\n## Where to report\n")
+        cn = res.get("country") or {}
+        where = taxonomy.COUNTRY_REPORTING.get(cn.get("code", "us"), {}).get("name", "")
+        L.append(f"\n## Where to report ({where})\n" if where else "\n## Where to report\n")
         for r in res["report_to"]:
             L.append(f"- {r['name']}" + (f": {r['url']}" if r["url"] else ""))
+        if cn.get("note"):
+            L.append(f"\n_{cn['note']}_")
     L.append("\n---\n*scam-signal v%s: local rule-based signals (score %s). This is guidance, not a guarantee and not legal advice. "
              "When in doubt, contact the organization through a channel you look up yourself.*" % (res["version"], res["score"]["total"]))
     return "\n".join(L) + "\n"
@@ -280,7 +329,8 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--text", help="message text")
     src.add_argument("--file", help=".txt / .eml / .msg / transcript file ('-' for stdin)")
     ap.add_argument("--url", action="append", default=[], help="URL to analyze (repeatable)")
-    ap.add_argument("--channel", default="unknown", choices=["sms", "email", "call", "dm", "complaint", "web", "unknown"])
+    ap.add_argument("--channel", default="unknown", choices=["sms", "email", "call", "dm", "chat", "complaint", "web", "unknown"])
+    ap.add_argument("--country", help="reporting country: us, uk, in, au, ca, ie, eu, nz (default: guess from the message, else us)")
     ap.add_argument("--rdap", action="store_true", help="domain age via rdap.org (sends domain only)")
     ap.add_argument("--expand", action="store_true", help="expand known URL shorteners (HEAD only)")
     ap.add_argument("--phish-feeds", action="store_true", help="download public phishing feeds, match locally")
@@ -310,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
         text = sys.stdin.read()
     if raw is not None and raw[:8] == email_headers.CFB_MAGIC:
         raw = email_headers.msg_to_message(raw).as_bytes()
-    res = analyze(text, raw_email=raw, urls=a.url, channel=a.channel, online=online)
+    res = analyze(text, raw_email=raw, urls=a.url, channel=a.channel, online=online, country=a.country)
     out = json.dumps(res, indent=2, default=str) if a.json else to_markdown(res)
     print(out)
     if a.save:

@@ -122,7 +122,7 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
     ("delivery_fee", "Missed delivery / unpaid toll / small fee pretext", 3, [
         r"\b(?:package|parcel|shipment|delivery|item)\b.{0,40}\b(?:could not be|couldn'?t be|was not|wasn'?t|unable to be|cannot be|on hold|failed|pending|suspended)\b",
         r"\b(?:incomplete|invalid|incorrect|unconfirmed) (?:address|zip|street|house number)\b",
-        r"\b(?:unpaid|outstanding|overdue) (?:toll|tolls|balance|fee|invoice)\b",
+        r"\b(?:unpaid|outstanding|overdue) (?:toll|tolls|fee)\b",
         r"\b(?:redeliver|redelivery|re-?delivery|rescheduling fee|shipping fee of)\b",
         r"\btoll (?:service|road|balance|notice|bill)\b.{0,60}\b(?:pay|fee|fine|\$)",
     ]),
@@ -202,6 +202,24 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
         r"\b(?:get|bring|win)\b (?:your |the |all your )?(?:lost )?(?:money|funds|crypto|bitcoin|investment|savings|deposit) back\b",
         r"\brecovery (?:agents?|experts?|specialists?|services?|team|company|firm|attorneys?|lawyers?)\b",
     ]),
+    ("changed_bank_details", "Says bank/payment details changed and asks you to pay a new account", 5, [
+        r"\b(?:new|updated|changed|different|alternative|alternate)\b(?: \w+){0,2} (?:bank(?:ing)?|account|remittance|payment|wire|wiring|ach|direct deposit) (?:details|information|info|instructions|account|number)s?\b",
+        r"\b(?:our|the|my) (?:bank(?:ing)?|account|payment|remittance|wire) (?:details|information|instructions|account)s? (?:have|has) (?:been )?(?:changed|updated)\b",
+        r"\b(?:do not|don'?t|stop) (?:use|pay|send)\b(?: \w+){0,3} (?:the |our )?(?:old|previous|former|usual) (?:account|bank|details)\b",
+        r"\b(?:update|change)\b(?: \w+){0,3} (?:my|the) (?:direct deposit|payroll|bank) (?:details|information|account)\b.{0,40}\b(?:before|for) (?:the )?(?:next )?(?:payroll|pay ?day|payment)\b",
+        r"\b(?:closing|settlement|escrow) (?:funds|costs|payment)\b.{0,80}\b(?:wire|new (?:instructions|account))\b",
+    ]),
+    ("fake_invoice", "Invoice/renewal/receipt for something you may not have ordered, with a number to call", 3, [
+        r"\b(?:invoice|receipt|order|subscription|renewal|purchase|charge)\b.{0,120}\b(?:if you did not|if you didn'?t|not you\??|to cancel|dispute|for a refund|did not authori[sz]e)\b.{0,60}\b(?:call|contact|dial|reach)\b",
+        r"\b(?:auto-?renew(?:ed|al)?|renewed (?:for|automatically)|annual (?:plan|subscription))\b.{0,80}\$\s?\d{2,}",
+        r"\b(?:geek squad|norton|mcafee|best buy|paypal|coinbase)\b.{0,60}\b(?:invoice|order (?:id|no|number|#)|renewal|subscription)\b",
+    ]),
+    ("qr_code_lure", "Pushes you to scan a QR code to pay, log in or verify", 3, [
+        r"\bscan (?:the |this |our )?(?:qr|code|qr code)\b.{0,80}\b(?:pay|payment|verify|login|log in|sign in|authenticate|reactivate|confirm|update|unlock|parking)\b",
+        r"\b(?:pay|payment|verify|login|log in|sign in|authenticate|reactivate|confirm|update|unlock|parking)\b.{0,80}\bscan (?:the |this |our )?(?:qr|code|qr code)\b",
+        r"\[(?:qr ?code|qr)[^\]]{0,40}\]",
+        r"\bqr code\b.{0,60}\b(?:multi-?factor|mfa|2fa|authenticat|security update|pay (?:here|now))\b",
+    ]),
     ("unauthorized_activity", "Describes transactions or account access you didn't make or approve", 3, [
         r"\b(?:i|we) (?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate|recogni[sz]e)\b",
         r"\b(?:i|we)\b[^.]{0,60}\b(?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate)\b",
@@ -274,7 +292,7 @@ TYPOLOGY_CUES: dict[str, tuple[list[str], list[str]]] = {
     "romance": (["romance_pretext"], [
         r"\b(?:love you|my love|darling|sweetheart|soulmate|dating|our future|marry|relationship|lonely|widow(?:er|ed)?)\b",
     ]),
-    "investment_crypto": (["seed_phrase", "wallet_drainer", "recovery_offer"], [
+    "investment_crypto": ([], [
         r"\b(?:invest\w*|trading (?:platform|app|account|firm|signals?)|signals|crypto\w*|bitcoin|usdt|forex|mining pool|liquidity|returns?|portfolio|profits?|withdraw(?:al)?|exchange|financial (?:advisor|mentor)|my (?:uncle|aunt|mentor) (?:is|works))\b",
     ]),
     "employment_task": (["job_too_easy"], [
@@ -288,6 +306,21 @@ TYPOLOGY_CUES: dict[str, tuple[list[str], list[str]]] = {
     ]),
     "extortion": (["sextortion"], [
         r"\b(?:recorded|webcam|video of you|explicit|intimate|expose|your contacts|i know your password)\b",
+    ]),
+    "bec_payment_redirect": (["changed_bank_details"], [
+        r"\b(?:invoice|remittance|vendor|supplier|wire|ach|escrow|closing|title company|settlement|payroll|direct deposit|accounts payable|outstanding balance)\b",
+    ]),
+    "fake_invoice": (["fake_invoice"], [
+        r"\b(?:invoice|receipt|renewal|subscription|order (?:id|no|number|#)|billing|auto-?renew\w*)\b",
+    ]),
+    "qr_phishing": (["qr_code_lure"], [
+        r"\b(?:qr|scan|parking (?:meter|ticket|fine|app))\b",
+    ]),
+    "wallet_drainer": (["wallet_drainer", "seed_phrase"], [
+        r"\b(?:airdrop|nft|mint|metamask|phantom|trust wallet|ledger|trezor|seed phrase|recovery phrase|connect (?:your )?wallet|dapp|web3)\b",
+    ]),
+    "recovery_scam": (["recovery_offer"], [
+        r"\b(?:recover\w*|lost funds|stolen funds|retrieve|trace(?:d)?|reclaim|refund of your (?:loss|investment))\b",
     ]),
     "account_takeover": (["unauthorized_activity"], [
         r"\b(?:i (?:did not|didn'?t|never) (?:make|authorize|send|approve)|sim[- ]swap|hacked|someone (?:accessed|logged into)|without my (?:knowledge|permission))\b",
@@ -388,6 +421,20 @@ def score_typology(text: str, flag_ids: set[str]) -> list[tuple[str, int]]:
         scores["investment_crypto"] = scores.get("investment_crypto", 0) + 1
     if "otp_request" in flag_ids and "marketplace" in scores:
         scores["marketplace"] += 1
+    # Fake renewal + "call to cancel" + device scare is the classic tech-support/refund funnel (FTC files it there);
+    # fake_invoice is for invoices/bills without the device-scare/remote-access part.
+    techy = bool({"remote_access"} & flag_ids) or bool(re.search(
+        r"\b(?:geek squad|norton|mcafee|antivirus|anti-virus|computer|device|pc|laptop|windows|microsoft|virus|malware|tech(?:nical)? support)\b",
+        text, re.I))
+    if "fake_invoice" in flag_ids and not techy:
+        scores["fake_invoice"] = scores.get("fake_invoice", 0) + 3
+    elif "fake_invoice" in flag_ids:
+        scores["fake_invoice"] = max(0, scores.get("fake_invoice", 0) - 4)
+    # "move your money to a new/safe account" is bank impersonation, not a vendor changing its details.
+    if "changed_bank_details" in flag_ids and "safe_account" not in flag_ids:
+        scores["bec_payment_redirect"] = scores.get("bec_payment_redirect", 0) + 3
+    elif "safe_account" in flag_ids and "bec_payment_redirect" in scores:
+        scores["bec_payment_redirect"] = max(0, scores["bec_payment_redirect"] - 6)
     return sorted(scores.items(), key=lambda kv: -kv[1])
 
 

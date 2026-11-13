@@ -89,15 +89,23 @@ BRANDS: dict[str, list[str]] = {
     "sunpass": ["sunpass.com"],
     "fastrak": ["bayareafastrak.org", "thetollroads.com"],
     "txtag": ["txtag.org"],
+    # UK / Australia / Canada. (Indian banks are moving to *.bank.in domains; not listed until that settles.)
+    "hmrc": ["www.gov.uk", "service.gov.uk"],
+    "dvla": ["www.gov.uk", "service.gov.uk"],
+    "royalmail": ["royalmail.com"],
+    "evri": ["evri.com"],
+    "auspost": ["auspost.com.au"],
+    "canadapost": ["canadapost-postescanada.ca", "canadapost.ca"],
 }
 # Short brand tokens are too collision-prone for substring matching ("att" in
 # "matter", "ups" in "groups"), so they only match as whole hyphen/dot tokens.
-SHORT_TOKEN_BRANDS = {"att", "ups", "dhl", "irs", "ssa", "pnc", "citi", "usps", "usaa", "chase", "apple"}
+SHORT_TOKEN_BRANDS = {"att", "ups", "dhl", "irs", "ssa", "pnc", "citi", "usps", "usaa", "chase", "apple", "hmrc", "dvla", "evri"}
 
 BRAND_ALIASES = {
     "boa": "bankofamerica", "bofa": "bankofamerica", "wells": "wellsfargo", "cash-app": "cashapp",
     "amex": "americanexpress", "nfcu": "navyfederal", "t-mobile": "tmobile", "e-zpass": "ezpass",
     "appleid": "apple", "icloud": "apple", "office365": "microsoft", "outlook": "microsoft",
+    "royal-mail": "royalmail", "australiapost": "auspost", "canada-post": "canadapost",
 }
 
 OFFICIAL = {d: b for b, ds in BRANDS.items() for d in ds}
@@ -355,6 +363,37 @@ def unwrap(url: str, depth: int = 0) -> tuple[str, list[tuple[str, str]]]:
     return url, []
 
 
+MESSAGING_HANDOFF = {
+    "t.me": "Telegram", "telegram.me": "Telegram", "telegram.dog": "Telegram",
+    "wa.me": "WhatsApp", "chat.whatsapp.com": "WhatsApp", "api.whatsapp.com": "WhatsApp",
+    "line.me": "LINE", "signal.me": "Signal", "m.me": "Messenger", "qm.qq.com": "QQ",
+}
+
+
+def _obfuscated_ip(host: str) -> str | None:
+    """Decode IPs written as one decimal/hex number or with hex/octal octets (e.g. 0x7f.1, 3232235777, 0300.0250.1.1)."""
+    if not host or re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host) and not re.search(r"(?:^|\.)0\d", host):
+        return None
+    parts = host.split(".")
+    if not 1 <= len(parts) <= 4 or not all(re.fullmatch(r"0x[0-9a-f]+|\d+", x) for x in parts):
+        return None
+    try:
+        nums = [int(x, 16) if x.startswith("0x") else (int(x, 8) if len(x) > 1 and x.startswith("0") else int(x)) for x in parts]
+    except ValueError:
+        return None
+    # inet_aton semantics: the last part fills the remaining bytes
+    tail_bytes = 4 - (len(nums) - 1)
+    if any(n > 255 for n in nums[:-1]) or nums[-1] >= 256 ** tail_bytes:
+        return None
+    if len(nums) == 1 and nums[0] < 256 ** 3:  # a bare small number is not a host
+        return None
+    val = 0
+    for n in nums[:-1]:
+        val = val * 256 + n
+    val = val * (256 ** tail_bytes) + nums[-1]
+    return ".".join(str((val >> s) & 255) for s in (24, 16, 8, 0))
+
+
 def analyze_url(url: str) -> UrlReport:
     final, chain = unwrap(url)
     if chain:
@@ -376,7 +415,8 @@ def analyze_url(url: str) -> UrlReport:
         userinfo, _, netloc = netloc.rpartition("@")
     host = netloc.split(":")[0].lower().strip(".")
     host_dec = decode_host(host)
-    is_ip = bool(re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host)) or host.startswith("[")
+    alt_ip = _obfuscated_ip(host)
+    is_ip = bool(re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host)) or host.startswith("[") or bool(alt_ip)
     reg = host if is_ip else registrable(host)
     had_scheme = bool(re.match(r"(?i)^\s*h(?:tt|xx)ps?://", url))
     generic_host = any(f in (host + parts.path).lower() for f in FORM_HOSTS) or any(
@@ -390,8 +430,18 @@ def analyze_url(url: str) -> UrlReport:
         add(Finding("official_domain", "info", -2,
                     f"{reg} is an official domain for {rep.official_brand}. Still prefer typing the address or using the app."))
 
-    if is_ip:
+    if alt_ip:
+        add(Finding("obfuscated_ip_host", "high", 5,
+                    f"Host {host} is an IP address written in hex/decimal/octal to disguise it (it means {alt_ip})."))
+    elif is_ip:
         add(Finding("ip_address_host", "high", 4, f"Link points to a raw IP address ({host}), not a named site."))
+    handoff = next((name for h, name in MESSAGING_HANDOFF.items()
+                    if (host == h or host.endswith("." + h)) and (h != "api.whatsapp.com" or parts.path.startswith("/send"))), None)
+    if handoff:
+        rep.official_brand = None
+        rep.findings[:] = [f for f in rep.findings if f.flag != "official_domain"]
+        add(Finding("messaging_handoff", "medium", 2,
+                    f"Link opens a {handoff} chat. Moving you to {handoff} is a common step in job, investment and romance scams."))
     if userinfo:
         add(Finding("userinfo_trick", "high", 4,
                     f"Text before '@' ({userinfo}) is ignored by browsers; the real destination is {host}."))
@@ -399,7 +449,7 @@ def analyze_url(url: str) -> UrlReport:
         add(Finding("internationalized_domain", "high", 3,
                     f"Domain uses non-ASCII / punycode characters: {host} displays as {host_dec}."))
 
-    if not rep.official_brand and reg not in SHORTENERS and not is_ip and not generic_host:
+    if not rep.official_brand and reg not in SHORTENERS and not is_ip and not generic_host and not handoff:
         sld = decode_host(reg.split(".")[0])
         cands = [sld] + [t for t in sld.split("-") if t and t != sld]
         lookalike = None

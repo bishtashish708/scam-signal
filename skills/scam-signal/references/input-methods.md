@@ -9,6 +9,7 @@ Ranked by **ease for the user** and **privacy**. Prefer the top rows.
 | 3 | **.eml / .msg / "Show original"** | ★★★ a few clicks | ★★★★★ single message, full headers | Supported |
 | 4 | **Link only** | ★★★★ paste or long-press → copy | ★★★★★ offline by default; optional lookups send only the domain | Supported |
 | 5 | **Call / voicemail transcript or notes** | ★★★★ iPhone/Google voicemail transcripts are screenshot-able | ★★★★★ | Supported |
+| 5b | **WhatsApp / Telegram chat export** | ★★★★ Export chat → share the .txt | ★★★★ the user picks one conversation | Supported (`scripts/chat_export.py`) |
 | 6 | **macOS Messages database (chat.db)** | ★★★★ (after setup) | ★★ needs Full Disk Access for the terminal; exposes all message history to that process | **Not in the skill.** Experimental, opt-in script outside the skill (see below) |
 | 7 | iOS Shortcut / share-sheet, browser extension, forward-to-address | ★★★★★ | varies | Ideas for later (see README) |
 
@@ -69,3 +70,18 @@ Accept: a transcript (iPhone Visual Voicemail, Google Voice, carrier transcripti
 **Not part of the skill.** Reading `~/Library/Messages/chat.db` requires granting **Full Disk Access** to the terminal app running Claude Code. That grant applies to every process launched from that terminal, not just this script, and the database holds the user's entire message history, including other people's messages. That conflicts with this skill's "user chooses what to share" principle, and the skill can't run in Claude.ai/Cowork anyway.
 
 For users who still want it, the repo ships `experimental/imessage_scan.py` (outside the skill): opt-in, local-only, opens the DB **read-only** (`mode=ro`), only reads messages from senders **not in a conversation the user has replied to** in a bounded window, prints them for analysis, and never writes the message text anywhere. Mention it only if the user asks about reading Messages directly. Screenshots are the recommended path.
+
+## 7. WhatsApp / Telegram chat exports
+
+Use these for long conversations, where one screenshot would miss the progression.
+
+- **WhatsApp (iPhone):** open the chat → tap the contact name → **Export Chat** → **Without Media** → share the .txt to Claude.
+- **WhatsApp (Android):** chat → ⋮ → **More** → **Export chat** → **Without media**.
+- **Telegram Desktop:** chat → ⋮ → **Export chat history** → JSON (`result.json`) or HTML/text.
+
+`scripts/chat_export.py <file>` (or `analyze.py --file <file>`) parses the iOS/Android WhatsApp formats and Telegram text/JSON. It then reports which stages of each long-con playbook appear, in order, each with a quote and date:
+- **pig-butchering:** opener → rapport → investment hook → platform/deposit → withdrawal fee;
+- **job/task:** recruit → tasks with commission → prepaid deposit;
+- **romance:** affection → can't meet → crisis → money.
+
+Exports contain the other person's messages and phone number, as well as the user's. Analyze them in-session and don't save them unless asked, redacted.

@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "skills" / "scam-signal" / "scripts"))
 import analyze  # noqa: E402
 
-CHANNEL_MAP = {"call_transcript": "call", "social_dm": "dm", "sms": "sms", "email": "email", "complaint": "complaint"}
+CHANNEL_MAP = {"call_transcript": "call", "social_dm": "dm", "sms": "sms", "email": "email", "complaint": "complaint", "chat_export": "chat"}
 
 
 def run(path: Path) -> dict:

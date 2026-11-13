@@ -34,6 +34,9 @@ Pick the lightest path that works. Never make the user retype something you can 
 | **A link** | `scripts/url_check.py "<url>"` (offline). Offer the optional lookups with `--rdap` (domain age, sends domain only), `--expand` (shorteners only, never visits the final page), `--phish-feeds` (downloads public feeds, matches locally). |
 | **Call / voicemail** | Accept a transcript, a voicemail-transcription screenshot, or the user's own notes, including a rough description ("someone from my bank said…"). Ask at most 2 short follow-ups if key facts are missing: what they asked for, and how they wanted to be paid. |
 | **Complaint / "this happened to me"** | Decide first: did the user **authorize** the payment because they were deceived (**scam**), or did money move **without** their authorization (**unauthorized fraud / account takeover**)? This changes their rights (see `references/typology.md`). |
+| **WhatsApp / Telegram conversation** | Ask for a chat export instead of many screenshots: WhatsApp → chat → contact name → **Export chat → Without media** (a .txt), or Telegram Desktop → **Export chat history**. Run `scripts/analyze.py --file <export>` (or `scripts/chat_export.py`). Long cons (pig-butchering, job/task, romance) only show up across messages: report the **stage timeline** (opener → trust → pitch → deposit → "withdrawal fee") with dates and quotes. |
+| **QR code** (photo of a sticker, letter, flyer, or a QR inside an email/PDF) | **Never guess or "decode" a QR code from an image.** You can't reliably read it, and a guessed URL is worse than none. Ask the user to **preview without opening**: point the iPhone Camera at it and read the domain in the yellow banner, or use Google Lens on Android, *without tapping*. Then type or paste the domain/URL here. Judge the context too: QR codes on parking meters, unexpected letters, or "scan to re-verify MFA" emails are themselves red flags. |
+| **Invoice / PDF bill / receipt** | Don't open attachments the user hasn't opened. Work from a screenshot or the text they paste. Use the **invoice checklist** below. |
 | **Pasted text** | Fine; use it as is. |
 
 ## Step 2: Run the signal engine (if code execution is available)
@@ -51,9 +54,20 @@ The engine returns red flags with evidence quotes, link and header findings, a r
 - **A low or zero engine score is never a clearance.** It means "no known pattern matched". Read the message yourself.
 - **`label: unsupported`** means the rules only cover English and the message is in another language or script. Analyze it yourself in that language, and **answer in the user's language**, keeping the same report structure. It misses subtle, link-free lures (for example "a specialist will call you, have your code ready") and can over-flag legitimate crypto or bank notices. Read the message yourself and decide. If code execution isn't available, do the same analysis manually using `references/red-flags.md` and `references/typology.md`.
 
+### Invoice checklist (fake invoices, renewals, "changed bank details")
+
+- Did you actually order or subscribe to this? Look it up in the real account or app, not via the invoice.
+- Is the only way to "cancel" or "dispute" a **phone number on the invoice**? That's the fake-renewal callback scam. Real companies point you to your account.
+- **Bank details new or changed?** Treat it as payment redirection (business email compromise) until you've confirmed by phone with a number you already had, before paying. Pay attention to the sender address (one letter off?), any Reply-To, and urgency ("pay today, our old account is frozen").
+- Amount, invoice number, and company details match previous genuine invoices?
+- Is it a PDF or HTML attachment from an unknown sender, or a "secure document" link that asks you to sign in? That's credential phishing.
+
 ## Step 3: Decide
 
-- **Typology:** pick the best match from `references/typology.md` (bank impersonation, government impersonation, tech-support/refund, delivery/toll smishing, credential phishing, marketplace, romance, investment/crypto, job/task, family emergency, prize/advance-fee, extortion; or *unauthorized fraud/account takeover*, which is not a scam). Map it to the FTC Consumer Sentinel, FBI IC3 and CFPB categories listed there.
+- **Typology:** pick the best match from `references/typology.md`:
+  - bank impersonation; government impersonation; tech-support/refund; delivery/toll smishing; credential phishing; marketplace; romance; investment/crypto; job/task; family emergency; prize/advance-fee; extortion;
+  - changed bank details (BEC); fake invoice; QR phishing; wallet drainer; fund-recovery scam;
+  - or *unauthorized fraud/account takeover*, which is not a scam. Map it to the FTC Consumer Sentinel, FBI IC3 and CFPB categories listed there.
 - **Risk:** `Very likely a scam` / `Likely a scam` / `Suspicious: verify before acting` / `Probably legitimate` / `Not enough information`. Give a **confidence** (high/medium/low) and say what would change it (e.g. "if the link really goes to chase.com…").
 - **Don't over-reassure.** "Probably legitimate" still comes with: verify through the official app or a number you look up yourself. Legitimate-looking boilerplate ("we'll never ask for your code") is easy to copy.
 
@@ -82,6 +96,10 @@ Keep it scannable. Quote evidence exactly. Lead with the verdict.
 ```
 
 For **inbox triage**, start with a table instead: `# | From | Subject | Date | Verdict | Top reason`. Then give a full breakdown only for the flagged messages. List the clean count as one line ("38 other messages: no scam signals").
+
+**Other languages:** if the user writes in another language, answer in that language and **keep exactly the same structure**: translate the labels (Verdict, Type, Red flags, What to do now, If you already acted, Where to report), keep evidence quotes in the original language, and keep URLs and phone numbers unchanged.
+
+**Country:** reporting differs by country. If the country is clear from the message (currency, phone prefix, institutions such as HMRC, UPI or Centrelink) or from the user, use that country's section in `references/reporting.md` (UK, India, Australia, Canada, Ireland/EU, New Zealand, U.S.). The engine's `country` field shows its guess and source. **If it's unclear and the message is a scam, ask once:** "Which country are you in, so I can give the right places to report?" Meanwhile give the universal steps (don't pay, contact your bank via its official number).
 
 Reporting links and per-type actions are in `references/reporting.md`. Always include: FTC (reportfraud.ftc.gov), plus the channel-specific ones (7726 for texts, reportphishing@apwg.org for email, IC3 for internet/crypto/investment/extortion, the bank/card issuer via its official number, the CFPB if the financial company won't resolve it, IdentityTheft.gov if personal data was exposed, the Elder Fraud Hotline 1-833-FRAUD-11 if the victim is 60+).
 
