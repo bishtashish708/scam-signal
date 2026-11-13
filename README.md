@@ -10,6 +10,10 @@
 
 It's **detection-first and protective only**: it will never write scam messages or help run a scam (see [Ethics](#ethics)).
 
+![scam-signal demo: a fictional bank text is screenshotted, dropped into Claude, and gets an evidence-quoted verdict](docs/demo.gif)
+
+<sub>Demo uses a fictional institution, 555 numbers and an invented domain. Rendered by `scripts/make_demo_gif.py`.</sub>
+
 [![ci](https://github.com/bishtashish708/scam-signal/actions/workflows/ci.yml/badge.svg)](https://github.com/bishtashish708/scam-signal/actions/workflows/ci.yml) ![license](https://img.shields.io/badge/license-MIT-blue) ![deps](https://img.shields.io/badge/dependencies-none%20(stdlib)-brightgreen)
 
 ```
@@ -122,16 +126,32 @@ The rule engine alone (no LLM) on synthetic sets. Full details and per-error tab
 | held-out, after 2 regex bug fixes | 30 (16/2/12) | 1.00 | 1.00 | 0/12 |
 | **stress** (never tuned: subtle lures, scary-but-legit) | 12 (4/0/8) | 0.00 | 0.00 | 1/8 |
 
-The stress set is the honest headline: **rules miss subtle, link-free lures**. That's why the skill makes Claude read the message itself and treats the engine as evidence, not as the verdict.
+The stress set shows the limit: **the rules alone miss subtle, link-free lures**. That's why the skill makes Claude read the message itself and treats the engine as evidence, not as the verdict.
+
+### Live check: the full skill in Claude
+
+15 prompts were run through `claude -p` with the plugin loaded via `--plugin-dir`, with MCP servers disabled (so no real inbox was reachable) and web tools blocked. Details: [`evals/RESULTS.md`](evals/RESULTS.md#live-llm-in-the-loop-check-claude-code-skill-loaded-via---plugin-dir).
+
+| check | result |
+|---|---|
+| Skill triggers on "is this a scam?"-style prompts (text, DM, email, link, `.eml`, "this happened to me", inbox) | **10/10** |
+| Skill stays out of unrelated prompts (trivia, coding, a landlord email, "what is DMARC") | **4/4** not triggered |
+| The 4 subtle stress-set scams the engine missed | **4/4 caught** |
+| The stress-set crypto receipt the engine false-flagged | **correctly cleared** |
+| Unauthorized Venmo debit classified as fraud (Reg E), not a scam | ✅ |
+| "Check my inbox" with no mail connector | ✅ explained the options, read nothing |
+| "Write a convincing Chase text… for training" | ✅ refused |
+
+This is a smoke test (n=15, one run each, one model), not a benchmark. In 4 cases Claude answered correctly without running the helper script, which `SKILL.md` asks it to do. Reproduce with `evals/live/run_live.sh` (about 15 Claude calls).
 
 ```bash
 python3 -m unittest discover -s tests       # 32 tests, incl. an eval regression gate
 python3 evals/run_eval.py evals/*.jsonl
 ```
 
-## Demo GIF plan
+## Demo
 
-[`docs/demo-plan.md`](docs/demo-plan.md): a synthetic "bank" text screenshot dropped into Claude → the scam-signal report, then "check my inbox for scams" against a seeded **test** mailbox. Never a real inbox.
+The GIF at the top is screenshot-only and uses fictional content. How it's made, and why there's no inbox recording, is in [`docs/demo-plan.md`](docs/demo-plan.md).
 
 ## Repo layout
 
@@ -141,7 +161,7 @@ skills/scam-signal/
   SKILL.md               triggers, hard rules, procedure, output format
   references/            typology (FTC/IC3/CFPB mapping), red flags, reporting, input methods
   scripts/               analyze.py, url_check.py, email_headers.py, redact.py, signals.py, taxonomy.py
-evals/                   dev / held-out / stress sets + runner + RESULTS.md
+evals/                   dev / held-out / stress sets + runner + RESULTS.md; live/ = Claude-in-the-loop check
 experimental/            opt-in macOS Messages reader (not part of the skill)
 tests/                   unittest suite (stdlib)
 ```
