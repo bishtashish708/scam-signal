@@ -6,3 +6,4 @@ dist/
 .venv/
 .DS_Store
 *.report.local.md
+evals/results/

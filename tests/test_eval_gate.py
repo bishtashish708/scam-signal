@@ -27,6 +27,17 @@ class EvalGate(unittest.TestCase):
             if o["category"] == "non_english":
                 self.assertNotEqual(o["pred"], "legit", o["id"] + " must not be cleared")
 
+    def test_blind_v03(self):
+        # Written by a separate agent that never saw the rules. First frozen run (commit b1bc508):
+        # P 0.97 / R 0.82 / FPR 1/24. Generic fixes followed; this gate guards the current level.
+        r = run_eval.run(ROOT / "evals" / "blind_v03.jsonl")
+        self.assertGreaterEqual(r["precision"], 0.95)
+        self.assertLessEqual(r["false_positive_rate"], 0.10)
+        self.assertGreaterEqual(r["recall"], 0.85)
+        for o in r["rows"]:
+            if o["category"] == "non_english" and o["label"] != "legit":
+                self.assertNotEqual(o["pred"], "legit", o["id"] + " must not be cleared")
+
     def test_stress_fpr_documented(self):
         # The stress set is intentionally NOT tuned on; only guard against FPR regressions.
         r = run_eval.run(ROOT / "evals" / "stress.jsonl")

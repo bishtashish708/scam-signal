@@ -2,6 +2,45 @@
 
 All notable changes to scam-signal. Versions follow [SemVer](https://semver.org/). The Claude.ai skill zip for each release is attached to its [GitHub Release](https://github.com/bishtashish708/scam-signal/releases).
 
+## [0.3.0] - 2026-11-13
+
+Independent review, P1 items.
+
+### Added
+- **International reporting.**
+  - Built-in tables for the **UK** (Report Fraud, formerly Action Fraud; Police Scotland 101; 159; 7726; report@phishing.gov.uk), **India** (1930, cybercrime.gov.in, Chakshu/Sanchar Saathi), **Australia** (Scamwatch, ReportCyber, IDCARE), **Canada** (CAFC 1-888-495-8501, 7726), **Ireland/EU** and **New Zealand** (7726, Netsafe, NCSC).
+  - `analyze.py --country`, plus a best-effort guess from currency, phone prefixes and institutions.
+  - When the country is unclear, the report says so and `SKILL.md` has Claude ask once.
+- **New typologies:**
+  - changed bank details / BEC (`bec_payment_redirect`), which was previously mislabelled as delivery smishing;
+  - fake invoice / renewal (`fake_invoice`);
+  - QR phishing (`qr_phishing`);
+  - wallet drainer (`wallet_drainer`);
+  - fund-recovery scam (`recovery_scam`).
+  
+  Each has FTC/IC3/CFPB best-fit mappings, do-now steps and reporting routes. New flags: `changed_bank_details`, `fake_invoice`, `qr_code_lure`.
+- **WhatsApp/Telegram chat exports** (`scripts/chat_export.py`):
+  - parses the iOS and Android WhatsApp formats and Telegram text/JSON;
+  - detects multi-message stage progressions for **pig-butchering**, **job/task** and **romance** scams, with a timeline of quotes and dates;
+  - `analyze.py` auto-detects exports.
+- **URL checks:** IP hosts written in hex, decimal or octal (`obfuscated_ip_host`), and handoffs to Telegram/WhatsApp/LINE/Signal via `t.me`, `wa.me` and similar (`messaging_handoff`). Lookalike detection now also covers UK, AU and CA brands (HMRC, DVLA, Royal Mail, Evri, Australia Post, Canada Post).
+- **Redaction:** international and UK phone numbers, Indian mobile numbers, **Aadhaar** (Verhoeff-checked), **PAN**, **UK postcodes**, **seed phrases** (labelled or numbered) and 64-hex private keys.
+- **`SKILL.md`:**
+  - QR guidance: never guess a QR code's contents; have the user preview the link without opening it.
+  - An invoice / changed-bank-details checklist.
+  - Chat-export input.
+  - Same report structure in other languages, with translated labels.
+  - Country handling.
+- **De-obfuscation:** emoji or symbols wedged inside words (`B💎o💎t`).
+- **Stricter refusal:** hard rule 1 now also forbids "defanged", annotated or placeholder versions of full scam messages. The skill description now triggers on requests to write, simulate or "test" scam messages, so the refusal rule is loaded when it's needed. This was found by `claude plugin eval`: 1 of 3 runs produced a placeholder BEC template.
+- **Negation:** "we never request payment by gift card" is no longer read as a gift-card demand. The same applies to crypto and credential requests.
+
+### Evals
+- **`evals/blind_v03.jsonl`** (64 cases) was written by a separate agent that never saw the rules. It covers injection, non-English, multi-message, obfuscation, legit look-alikes, the new types and hard cases. The rules were frozen at commit `b1bc508` before its first run.
+- **`evals/plugin/`** holds 10 `claude plugin eval` cases with LLM graders, each run 3×. The first pass scored 0.95 (26/30 runs). After the refusal fix and a grader fix it reached 30/30.
+- **Blind set, first frozen run:** precision 0.97, recall 0.82, 1/24 false positives. After generic fixes: 1.00 / 0.90 / 0/24, no longer blind.
+- Full numbers are in `evals/RESULTS.md`.
+
 ## [0.2.0] - 2026-11-13
 
 Hardening from an independent power-user review (all P0 items).

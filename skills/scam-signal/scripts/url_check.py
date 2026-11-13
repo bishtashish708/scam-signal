@@ -515,7 +515,7 @@ def analyze_url(url: str) -> UrlReport:
 # Optional online lookups (explicit opt-in only)
 # --------------------------------------------------------------------------
 
-UA = "scam-signal/0.2 (+https://github.com/bishtashish708/scam-signal)"
+UA = "scam-signal/0.3 (+https://github.com/bishtashish708/scam-signal)"
 
 
 def rdap_lookup(domain: str, timeout: float = 8.0) -> dict:

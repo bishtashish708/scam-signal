@@ -35,6 +35,7 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
     ("credential_request", "Asks for passwords, PINs, SSN, card or account details", 4, [
         r"\b(?:confirm|verify|update|provide|enter|send|validate|re-?enter)\b(?: \w+){0,3} (?:your )?(?:password|pin|ssn|social security(?: number)?|account (?:number|details|information|info)|login (?:details|credentials)|card (?:number|details|information)|banking (?:details|information)|date of birth|online banking)",
         r"\b(?:password|login) (?:expires?|will expire|has expired)\b",
+        r"\b(?:confirm|verify|update|re-?enter|submit)\b(?: \w+){0,3} (?:your )?(?:direct deposit|payroll|salary account|bank(?:ing)?) (?:details|information|info)\b.{0,60}\b(?:form|link|portal|below|here|https?://)",
         r"\bkeep (?:the )?same password\b",
     ]),
     ("gift_card_payment", "Demands payment by gift card", 5, [
@@ -208,6 +209,7 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
         r"\b(?:do not|don'?t|stop) (?:use|pay|send)\b(?: \w+){0,3} (?:the |our )?(?:old|previous|former|usual) (?:account|bank|details)\b",
         r"\b(?:update|change)\b(?: \w+){0,3} (?:my|the) (?:direct deposit|payroll|bank) (?:details|information|account)\b.{0,40}\b(?:before|for) (?:the )?(?:next )?(?:payroll|pay ?day|payment)\b",
         r"\b(?:closing|settlement|escrow) (?:funds|costs|payment)\b.{0,80}\b(?:wire|new (?:instructions|account))\b",
+        r"\b(?:new|switching to a new|moving to a new|changing) (?:payroll|hr|benefits) (?:provider|system|platform|portal)\b.{0,160}\b(?:confirm|update|re-?enter|verify|submit)\b.{0,40}\b(?:direct deposit|bank(?:ing)?|account|salary) (?:details|information|info)\b",
     ]),
     ("fake_invoice", "Invoice/renewal/receipt for something you may not have ordered, with a number to call", 3, [
         r"\b(?:invoice|receipt|order|subscription|renewal|purchase|charge)\b.{0,120}\b(?:if you did not|if you didn'?t|not you\??|to cancel|dispute|for a refund|did not authori[sz]e)\b.{0,60}\b(?:call|contact|dial|reach)\b",
@@ -225,6 +227,8 @@ FLAGS: list[tuple[str, str, int, list[str]]] = [
         r"\b(?:i|we)\b[^.]{0,60}\b(?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate)\b",
         r"\b(?:unauthori[sz]ed|fraudulent) (?:transactions?|transfers?|charges?|withdrawals?|payments?|access|login)\b",
         r"\bsomeone (?:else )?(?:hacked|accessed|logged into|got into|broke into|took over) (?:my|our) (?:account|email|phone|app)\b",
+        r"\bsomeone (?:else )?(?:logged in|signed in|got in)\b.{0,60}\b(?:new device|another (?:state|country|city)|my (?:account|app|bank))\b",
+        r"\b(?:i|we) (?:did not|didn'?t|never) (?:change|reset) (?:it|my password|the password)\b",
         r"\b(?:sim[- ]swap|ported my (?:number|phone)|my phone (?:lost|had no) service)\b",
         r"\bwithout my (?:knowledge|permission|authori[sz]ation|consent)\b",
     ]),
@@ -385,7 +389,7 @@ def find_flags(text: str, table=FLAGS) -> list[Hit]:
         for p in pats:
             for m in re.finditer(p, low, re.I | re.M | re.S):
                 q = _quote(text, m)
-                if fid in ("otp_request", "seed_phrase") and _negated(low, m):
+                if fid in ("otp_request", "seed_phrase", "gift_card_payment", "crypto_payment", "credential_request") and _negated(low, m):
                     continue  # "never share this code/phrase" is a reassuring cue, not a request
                 if fid == "ai_directed_text" and _quoted(low, m):
                     continue  # quoting an injection phrase (e.g. in a security newsletter) is not an injection
@@ -488,7 +492,13 @@ def normalize_text(text: str) -> Normalized:
             return w.translate(conf_map)
         return w
     nf = re.sub(r"[\w]+", _fix_conf, nf)
+    # symbols/emoji wedged between letters ("B💎o💎t", "g🔹i🔹f🔹t")
+    sym_sep = re.compile("(?<=[A-Za-z])(?:[\u2190-\u2bff\u25a0-\u27bf\ufe0f\u200d]|[\U0001F000-\U0001FAFF])+(?=[A-Za-z])")
+    n_sym = len(sym_sep.findall(nf))
+    nf = sym_sep.sub("", nf)
     spaced: list[str] = []
+    if n_sym >= 2:
+        spaced.append(f"{n_sym} emoji/symbols inside words")
 
     def _join(m: re.Match) -> str:
         joined = re.sub(r"[ .\-_*·]", "", m.group(0))

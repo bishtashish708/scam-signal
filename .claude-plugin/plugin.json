@@ -1,7 +1,7 @@
 {
   "name": "scam-signal",
   "displayName": "scam-signal",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Is this a scam? Analyze texts, emails, screenshots, calls and links (or triage your inbox via a mail connector) and get the scam type mapped to FTC/IC3/CFPB categories, ranked red flags with evidence, a risk level, what to do now, and official reporting links. Detection-only, privacy-first.",
   "author": {
     "name": "bishtashish708",

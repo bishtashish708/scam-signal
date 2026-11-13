@@ -10,7 +10,7 @@
       "name": "scam-signal",
       "source": "./",
       "description": "Check whether a message, email, screenshot, call or link is a scam, and know what to do and where to report it.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "security"
     }
   ]

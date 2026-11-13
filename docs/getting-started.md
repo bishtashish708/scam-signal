@@ -53,6 +53,8 @@ Your skills belong to your Claude account. Install the **Claude** app (App Store
 |---|---|
 | Suspicious email | A screenshot, or forward/paste it. For the most thorough check, save it as a file (Gmail: ⋮ → **Download message**) and attach it in Claude on a computer. |
 | A link | Long-press the link → **Copy**, then paste it. **Don't open it.** |
+| A long WhatsApp chat | In WhatsApp, open the chat → tap the name → **Export chat → Without media** → share to Claude. Scams like "wrong number" crypto friendships only show up across many messages. |
+| A QR code | **Don't scan it to pay.** Point your camera at it *without tapping*, read the web address it shows, and send Claude that address. |
 | A phone call | Describe it in your own words: who they said they were, and what they wanted you to do or pay. |
 | "I already paid / gave a code" | Say exactly that first. Claude will lead with what to do right now. |
 

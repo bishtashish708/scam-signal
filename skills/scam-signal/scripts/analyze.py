@@ -36,7 +36,7 @@ import signals  # noqa: E402
 import taxonomy  # noqa: E402
 import url_check  # noqa: E402
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 DECEPTION_FLAGS = {
     "safe_account", "otp_request", "remote_access", "gift_card_payment", "overpayment", "too_good",
@@ -57,6 +57,7 @@ FIRST_PERSON_UNAUTH = re.compile(
     r"\b(?:i|we) (?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate|recogni[sz]e)\b"
     r"|\b(?:i|we)\b[^.]{0,60}\b(?:did not|didn'?t|never) (?:make|authorize|send|approve|initiate)\b"
     r"|\bsomeone (?:else )?(?:hacked|accessed|logged into|got into|broke into|took over) (?:my|our)\b"
+    r"|\bsomeone (?:else )?(?:logged in|signed in|got in)\b[^.]{0,60}\b(?:new device|another (?:state|country|city))\b"
     r"|\bwithout my (?:knowledge|permission|authori[sz]ation|consent)\b"
     r"|\bsim[- ]swap|\bported my (?:number|phone)\b",
     re.I,
@@ -169,7 +170,8 @@ def analyze(text: str = "", *, email_path: str | None = None, raw_email: bytes |
 
     # ---- classification ----
     typ_scores = signals.score_typology(norm.text + " " + " ".join(r.host_decoded for r in url_reports), flag_ids)
-    if top_scheme and top_scheme["strength"] >= 2:
+    if top_scheme and (top_scheme["strength"] == 3 or
+                       (top_scheme["strength"] == 2 and top_scheme["typology"] in [t for t, _ in typ_scores[:2]])):
         typ_scores = [(top_scheme["typology"], 99)] + [t for t in typ_scores if t[0] != top_scheme["typology"]]
     fraud_narrative = bool(FIRST_PERSON_UNAUTH.search(body)) and not (DECEPTION_FLAGS & flag_ids) and total < 12
     if fraud_narrative:

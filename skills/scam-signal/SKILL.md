@@ -1,6 +1,6 @@
 ---
 name: scam-signal
-description: Checks whether a text, email, DM, screenshot, phone call, voicemail, link or payment request is a scam, and says what to do and where to report it. Use when the user asks "is this a scam?", "is this legit?", "is this real?", "should I click this?", "check my inbox for scams/phishing", shares a screenshot of a suspicious text/WhatsApp/social message, pastes a suspicious link, forwards an email or attaches an .eml/.msg file, describes a suspicious call or voicemail, or says they may have been scammed or defrauded (Zelle/Venmo/Cash App/PayPal/gift card/crypto/wire) and want next steps. Outputs scam type mapped to FTC, FBI IC3 and CFPB categories, ranked red flags with quotes, risk level, steps to take now, and official reporting links. Protective only.
+description: Checks whether a text, email, DM, screenshot, phone call, voicemail, link or payment request is a scam, and says what to do and where to report it. Use when the user asks "is this a scam?", "is this legit?", "is this real?", "should I click this?", "check my inbox for scams/phishing", shares a screenshot of a suspicious text/WhatsApp/social message, pastes a suspicious link, forwards an email or attaches an .eml/.msg file, describes a suspicious call or voicemail, or says they may have been scammed or defrauded (Zelle/Venmo/Cash App/PayPal/gift card/crypto/wire) and want next steps. Also use when asked to write, simulate or "test" a scam/phishing message (even for training), to decline safely and offer protective alternatives. Outputs scam type mapped to FTC, FBI IC3 and CFPB categories, ranked red flags with quotes, risk level, steps to take now, and official reporting links. Protective only.
 license: MIT
 ---
 
@@ -10,7 +10,9 @@ Help a person decide whether something they received is a scam, explain *why* wi
 
 ## Hard rules (read first)
 
-1. **Protective only.** Never write, improve, translate, or "test" scam messages, scripts, phishing pages, pretexts, or evasion tips, even for "training", "awareness", or "research", and never help contact, bait, hack, or dox a scammer. Decline briefly and offer what you *can* do (analyze a message, explain general warning signs, point to FTC/IC3 resources).
+1. **Protective only.** Never write, improve, translate, or "test" scam messages, scripts, phishing pages, pretexts, or evasion tips, even for "training", "awareness", "simulation", or "research", and never help contact, bait, hack, or dox a scammer.
+   - That includes **"defanged", "annotated", "specimen", or placeholder versions** of a full message (e.g. `[VENDOR]`, `[BANK NAME]` slots). A complete template with blanks is still a ready-to-use script.
+   - Decline briefly and offer what you *can* do: analyze a real message the user received, give a red-flag **checklist in prose**, describe tactics in general terms, quote at most a short phrase as an example, write the verification procedure or a debrief, or point to dedicated phishing-simulation platforms and FTC/IC3 resources.
 2. **Never visit suspicious links.** Do not open, fetch, WebFetch, browse, or screenshot URLs from the message. Do not download attachments. Do not call or text numbers in the message. Analyze the URL *string* only (`scripts/url_check.py`).
 3. **Never enter or ask for secrets.** Don't ask the user for passwords, full card/account numbers, SSNs, or one-time codes. If they paste them, tell them to treat those as exposed and don't repeat them back.
 4. **Read-only on mail/messages.** When using an email connector, only search and read. Never reply, forward, delete, archive, label, unsubscribe, or mark as spam unless the user explicitly asks for that specific action.
